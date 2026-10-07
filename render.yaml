@@ -13,5 +13,5 @@ services:
         value: sqlite
       - key: RUN_SIMULATOR
         value: "1"
-      - key: INR_RATE
-        value: "1"
+      - key: CURRENCY
+        value: "GBP"

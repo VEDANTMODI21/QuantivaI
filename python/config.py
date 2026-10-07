@@ -104,8 +104,9 @@ def test_db_connection():
 
 
 # App Settings
-NUM_ORDERS = int(os.getenv("NUM_ORDERS", 50000))
-
+NUM_CUSTOMERS = int(os.getenv("NUM_CUSTOMERS", 500))
+NUM_PRODUCTS = int(os.getenv("NUM_PRODUCTS", 50))
+NUM_ORDERS = int(os.getenv("NUM_ORDERS", 5000))
 FRAUD_RATE = float(
     os.getenv("FRAUD_CONTAMINATION_RATE", 0.02)
 )

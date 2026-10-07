@@ -7,21 +7,55 @@ from config import NUM_CUSTOMERS, NUM_PRODUCTS, NUM_ORDERS, setup_logging, test_
 from utils import get_engine, fetch_data, bulk_insert, execute_query, refresh_materialized_views
 
 logger = setup_logging("ETL_Pipeline")
-fake = Faker()
+fake = Faker('en_GB')
+
+REALISTIC_PRODUCTS = [
+    ("WHITE HANGING HEART T-LIGHT HOLDER", 1, 1.25, 2.95),
+    ("REGENCY CAKESTAND 3 TIER", 2, 4.50, 12.75),
+    ("JUMBO BAG RED RETROSPOT", 4, 0.85, 2.08),
+    ("PARTY BUNTING", 4, 2.10, 4.95),
+    ("LUNCH BAG RED RETROSPOT", 2, 0.75, 1.65),
+    ("SET OF 3 CAKE TINS PANTRY DESIGN", 2, 3.20, 8.95),
+    ("HEART OF WICKER SMALL", 1, 0.90, 2.10),
+    ("HEART OF WICKER LARGE", 1, 1.80, 4.25),
+    ("ASSORTED COLOUR BIRD ORNAMENT", 1, 0.65, 1.69),
+    ("PACK OF 72 RETROSPOT CAKE CASES", 2, 0.35, 0.95),
+    ("VICTORIAN GLASS HANGING T-LIGHT", 1, 1.10, 2.45),
+    ("ROSES REGENCY TEACUP AND SAUCER", 2, 2.25, 5.50),
+    ("WOODEN PICTURE FRAME WHITE FINISH", 1, 1.60, 3.95),
+    ("NATURAL SLATE HEART CHALKBOARD", 1, 1.20, 2.95),
+    ("HAND WARMER OWL DESIGN", 3, 0.80, 2.10),
+    ("VINTAGE SNAP CARDS", 3, 0.40, 1.25),
+    ("POPCORN HOLDER", 4, 0.30, 0.85),
+    ("RETROSPOT TEA SET CERAMIC 11 PC", 2, 4.80, 11.95),
+    ("BAKING SET 9 PIECE RETROSPOT", 2, 2.50, 6.75),
+    ("ANTIQUE SILVER T-LIGHT GLASS", 1, 0.75, 1.95),
+    ("PAPER CHAIN KIT 50'S CHRISTMAS", 5, 1.10, 2.95),
+    ("SET OF 4 POLKADOT COASTERS", 2, 0.60, 1.50),
+    ("MINI PAINTED BIRD HOUSES", 1, 0.85, 2.25),
+    ("DOORMAT UNION FLAG", 1, 3.10, 7.95),
+    ("CHARLOTTE BAG SUKI DESIGN", 4, 0.45, 1.25),
+    ("RED RETROSPOT CHARLOTTE BAG", 4, 0.45, 1.25),
+    ("WOODEN STAR CHRISTMAS ORNAMENT", 5, 0.50, 1.45),
+    ("VINTAGE HEADS AND TAILS CARD GAME", 3, 0.55, 1.65),
+    ("ZINC METAL HEART DECORATION", 1, 0.60, 1.55),
+    ("RABBIT NIGHT LIGHT", 1, 1.80, 4.50)
+]
 
 def generate_customers(num_customers):
     logger.info(f"Generating {num_customers} customers...")
     data = []
+    countries = ["United Kingdom", "United Kingdom", "United Kingdom", "United Kingdom", "Germany", "France", "EIRE", "Spain", "Netherlands"]
     for _ in range(num_customers):
         data.append({
             "name": fake.name(),
             "email": fake.unique.email(),
             "phone": fake.phone_number()[:20],
             "city": fake.city(),
-            "state": fake.state(),
-            "country": "USA", # Simplified
+            "state": fake.county() if hasattr(fake, 'county') else "England",
+            "country": random.choice(countries),
             "registration_date": fake.date_time_between(start_date='-2y', end_date='now'),
-            "is_active": random.choices([True, False], weights=[0.9, 0.1])[0]
+            "is_active": random.choices([True, False], weights=[0.92, 0.08])[0]
         })
     df = pd.DataFrame(data)
     bulk_insert(df, "customers", if_exists="append")
@@ -30,29 +64,30 @@ def generate_customers(num_customers):
 def generate_categories_and_suppliers():
     logger.info("Generating Categories and Suppliers...")
     categories = [
-        {"category_name": "Electronics", "parent_category_id": None},
-        {"category_name": "Clothing", "parent_category_id": None},
-        {"category_name": "Home & Kitchen", "parent_category_id": None},
-        {"category_name": "Sports", "parent_category_id": None},
-        {"category_name": "Books", "parent_category_id": None}
+        {"category_name": "Home & Decor", "parent_category_id": None},
+        {"category_name": "Kitchenware", "parent_category_id": None},
+        {"category_name": "Gifts & Novelties", "parent_category_id": None},
+        {"category_name": "Party & Bags", "parent_category_id": None},
+        {"category_name": "Seasonal & Holiday", "parent_category_id": None}
     ]
     df_cat = pd.DataFrame(categories)
     bulk_insert(df_cat, "categories", if_exists="append")
 
     suppliers = []
+    uk_cities = ["London", "Manchester", "Birmingham", "Leeds", "Bristol", "Edinburgh"]
     for _ in range(30):
         suppliers.append({
-            "supplier_name": fake.company(),
+            "supplier_name": fake.company() + " Ltd",
             "contact_email": fake.company_email(),
-            "country": fake.country(),
-            "reliability_score": round(random.uniform(80.0, 100.0), 2)
+            "country": "United Kingdom",
+            "reliability_score": round(random.uniform(85.0, 99.5), 2)
         })
     df_sup = pd.DataFrame(suppliers)
     bulk_insert(df_sup, "suppliers", if_exists="append")
     logger.info("Categories and Suppliers inserted.")
 
 def generate_products(num_products):
-    logger.info(f"Generating {num_products} products...")
+    logger.info(f"Generating {num_products} products based on Online Retail catalog...")
     cat_ids = fetch_data("SELECT category_id FROM categories")['category_id'].tolist()
     sup_ids = fetch_data("SELECT supplier_id FROM suppliers")['supplier_id'].tolist()
     
@@ -61,29 +96,45 @@ def generate_products(num_products):
         return
 
     data = []
-    for _ in range(num_products):
-        cost_price = round(random.uniform(5.0, 500.0), 2)
-        price = round(cost_price * random.uniform(1.2, 2.5), 2) # 20% to 150% markup
+    # Seed with realistic Online Retail products first
+    for name, cat_idx, cost, price in REALISTIC_PRODUCTS:
+        actual_cat = cat_ids[min(cat_idx - 1, len(cat_ids) - 1)]
         data.append({
-            "product_name": fake.catch_phrase(),
+            "product_name": name,
+            "category_id": actual_cat,
+            "supplier_id": random.choice(sup_ids),
+            "price": price,
+            "cost_price": cost,
+            "stock_quantity": random.randint(100, 3000),
+            "reorder_level": random.randint(20, 80)
+        })
+    
+    # Fill remaining products if needed
+    for i in range(len(REALISTIC_PRODUCTS), num_products):
+        cost_price = round(random.uniform(0.75, 28.0), 2)
+        price = round(cost_price * random.uniform(1.4, 2.8), 2)
+        data.append({
+            "product_name": f"{fake.word().upper()} {random.choice(['DECORATION', 'BOX', 'HOLDER', 'MUG', 'BOWL', 'LIGHT', 'SET'])}",
             "category_id": random.choice(cat_ids),
             "supplier_id": random.choice(sup_ids),
             "price": price,
             "cost_price": cost_price,
-            "stock_quantity": random.randint(50, 1000),
+            "stock_quantity": random.randint(50, 1500),
             "reorder_level": random.randint(10, 50)
         })
-    df = pd.DataFrame(data)
+    
+    df = pd.DataFrame(data[:num_products])
     bulk_insert(df, "products", if_exists="append")
     
     # Generate Inventory
     prod_ids = fetch_data("SELECT product_id FROM products")['product_id'].tolist()
     inv_data = []
+    locations = ["London DC", "Midlands Hub", "North West Hub", "Scotland DC"]
     for pid in prod_ids:
         inv_data.append({
             "product_id": pid,
-            "warehouse_location": fake.city() + " Warehouse",
-            "quantity_on_hand": random.randint(50, 1000),
+            "warehouse_location": random.choice(locations),
+            "quantity_on_hand": random.randint(100, 2500),
             "quantity_reserved": 0,
             "last_restock_date": datetime.now()
         })
@@ -91,7 +142,7 @@ def generate_products(num_products):
     logger.info("Products and Inventory inserted.")
 
 def generate_orders(num_orders):
-    logger.info(f"Generating {num_orders} orders...")
+    logger.info(f"Generating {num_orders} orders in GBP (£)...")
     cust_ids = fetch_data("SELECT customer_id FROM customers")['customer_id'].tolist()
     prod_df = fetch_data("SELECT product_id, price FROM products")
     
@@ -99,98 +150,89 @@ def generate_orders(num_orders):
         logger.error("Missing customers or products.")
         return
 
-    # To optimize memory, we'll batch this
-    batch_size = 5000
-    for i in range(0, num_orders, batch_size):
-        batch_orders = min(batch_size, num_orders - i)
-        orders = []
-        for _ in range(batch_orders):
-            orders.append({
-                "customer_id": random.choice(cust_ids),
-                "order_date": fake.date_time_between(start_date='-1y', end_date='now'),
-                "status": random.choices(['Completed', 'Pending', 'Cancelled'], weights=[0.85, 0.1, 0.05])[0],
-                "total_amount": 0.0, # Will be updated by trigger, but we'll insert 0 for now
-                "shipping_address": fake.address().replace('\n', ', '),
-                "region": random.choice(["North", "South", "East", "West"])
-            })
-        df_orders = pd.DataFrame(orders)
+    regions = ["London & South East", "Midlands", "North England", "Scotland & Wales", "International Europe"]
+    prod_records = prod_df.to_dict('records')
+    
+    # Get initial order_id offset
+    max_id_res = fetch_data("SELECT COALESCE(MAX(order_id), 0) as max_id FROM orders")
+    current_order_id = int(max_id_res.iloc[0]['max_id'])
+    
+    orders = []
+    items = []
+    payments = []
+    refunds = []
+    
+    start_date = datetime.now() - timedelta(days=365)
+    
+    for i in range(num_orders):
+        current_order_id += 1
+        oid = current_order_id
         
-        # Need to insert and then fetch generated order_ids to create items
-        engine = get_engine()
-        with engine.begin() as conn:
-            df_orders.to_sql('orders', conn, if_exists='append', index=False, method='multi')
+        # Fraud spike chance (2%)
+        is_fraud = random.random() < 0.02
+        cid = random.randint(1, 15) if is_fraud else random.choice(cust_ids)
+        num_items = random.randint(1, 4)
+        order_total = 0.0
         
-        # Fetch the newly inserted order_ids. We'll use a rough heuristic: get max N order_ids
-        recent_order_ids = fetch_data(f"SELECT order_id FROM orders ORDER BY order_id DESC LIMIT {batch_orders}")['order_id'].tolist()
-        
-        items = []
-        payments = []
-        refunds = []
-        for oid in recent_order_ids:
-            num_items = random.randint(1, 5)
-            order_total = 0
-            for _ in range(num_items):
-                p = prod_df.sample(1).iloc[0]
-                qty = random.randint(1, 3)
-                items.append({
-                    "order_id": oid,
-                    "product_id": int(p['product_id']),
-                    "quantity": qty,
-                    "unit_price": float(p['price']),
-                    "discount": 0.0
-                })
-                order_total += qty * float(p['price'])
-            
-            # Payment
-            payment_status = 'Completed'
-            payments.append({
+        for _ in range(num_items):
+            p = random.choice(prod_records)
+            qty = random.randint(30, 80) if is_fraud else random.randint(1, 5)
+            unit_price = float(p['price'])
+            line_tot = qty * unit_price
+            order_total += line_tot
+            items.append({
                 "order_id": oid,
-                "payment_method": random.choice(["Credit Card", "Debit Card", "UPI", "Wallet"]),
-                "amount": float(order_total),
-                "payment_date": datetime.now(),
-                "status": payment_status,
-                "transaction_ref": fake.uuid4()
+                "product_id": int(p['product_id']),
+                "quantity": qty,
+                "unit_price": unit_price,
+                "discount": 0.0,
+                "line_total": line_tot
             })
             
-            # Refund (5% chance)
-            if random.random() < 0.05:
-                refunds.append({
-                    "order_id": oid,
-                    "payment_id": None, # Will map later or leave null for simplicity
-                    "refund_amount": float(order_total),
-                    "reason": random.choice(["Defective", "Not Needed", "Wrong Item"]),
-                    "refund_date": datetime.now(),
-                    "status": "Processed"
-                })
-
-        items_df = pd.DataFrame(items)
-        if is_sqlite() and not items_df.empty:
-            items_df['line_total'] = items_df['quantity'] * items_df['unit_price'] - items_df['discount']
-
-        bulk_insert(items_df, "order_items", if_exists="append")
-        bulk_insert(pd.DataFrame(payments), "payments", if_exists="append")
-        if refunds:
-            bulk_insert(pd.DataFrame(refunds), "refunds", if_exists="append")
-
-        update_order_totals()
-        logger.info(f"Inserted order batch {i} to {i + batch_orders}")
-
-def update_order_totals():
-    logger.info("Updating order totals from order_items...")
-    execute_query(
-        """
-        UPDATE orders
-        SET total_amount = (
-            SELECT COALESCE(SUM(quantity * unit_price - discount), 0)
-            FROM order_items oi
-            WHERE oi.order_id = orders.order_id
-        )
-        """
-    )
+        order_date = fake.date_time_between(start_date=start_date, end_date='now')
+        status = random.choices(['Completed', 'Pending', 'Cancelled'], weights=[0.90, 0.07, 0.03])[0]
+        
+        orders.append({
+            "order_id": oid,
+            "customer_id": cid,
+            "order_date": order_date,
+            "status": status,
+            "total_amount": round(order_total, 2),
+            "shipping_address": fake.address().replace('\n', ', '),
+            "region": random.choice(regions)
+        })
+        
+        payments.append({
+            "order_id": oid,
+            "payment_method": "Credit Card" if is_fraud else random.choice(["Credit Card", "Debit Card", "PayPal", "Bank Transfer"]),
+            "amount": round(order_total, 2),
+            "payment_date": order_date,
+            "status": "Completed" if status == "Completed" else "Pending",
+            "transaction_ref": fake.uuid4()
+        })
+        
+        # Refunds (4% of completed orders, high for fraud)
+        if status == "Completed" and (is_fraud or random.random() < 0.04):
+            refunds.append({
+                "order_id": oid,
+                "payment_id": None,
+                "refund_amount": round(order_total, 2),
+                "reason": "Suspected velocity abuse" if is_fraud else random.choice(["Defective item", "Changed mind", "Damaged in transit"]),
+                "refund_date": order_date + timedelta(days=random.randint(1, 14)),
+                "status": "Processed"
+            })
+            
+    logger.info(f"Writing {len(orders)} orders, {len(items)} items, {len(payments)} payments to database...")
+    bulk_insert(pd.DataFrame(orders), "orders", if_exists="append")
+    bulk_insert(pd.DataFrame(items), "order_items", if_exists="append")
+    bulk_insert(pd.DataFrame(payments), "payments", if_exists="append")
+    if refunds:
+        bulk_insert(pd.DataFrame(refunds), "refunds", if_exists="append")
+    logger.info("All orders and transactions inserted successfully.")
 
 
 def generate_customer_segments():
-    logger.info("Generating customer segments...")
+    logger.info("Generating customer RFM segments in GBP...")
     customer_metrics = fetch_data(
         """
         SELECT
@@ -218,11 +260,11 @@ def generate_customer_segments():
     customer_metrics["monetary"] = customer_metrics["monetary"].fillna(0.0)
 
     def choose_segment(row):
-        if row["frequency"] >= 20 or row["monetary"] >= 5000:
+        if row["frequency"] >= 18 or row["monetary"] >= 1500:
             return "Platinum"
-        if row["frequency"] >= 10 or row["monetary"] >= 2500:
+        if row["frequency"] >= 10 or row["monetary"] >= 800:
             return "Gold"
-        if row["frequency"] >= 4 or row["monetary"] >= 1000:
+        if row["frequency"] >= 4 or row["monetary"] >= 300:
             return "Silver"
         return "Bronze"
 
@@ -247,58 +289,32 @@ def generate_customer_segments():
 
 
 def generate_fraud_logs():
-    logger.info("Generating fraud logs...")
-    completed_orders = fetch_data(
-        "SELECT order_id, customer_id FROM orders WHERE status = 'Completed'"
-    )
-    if completed_orders.empty:
-        logger.info("No completed orders available for fraud log generation.")
-        return
-
-    sample_size = max(1, int(len(completed_orders) * 0.02))
-    fraud_orders = completed_orders.sample(min(sample_size, len(completed_orders)))
-
-    fraud_records = []
-    for _, row in fraud_orders.iterrows():
-        fraud_records.append({
-            "customer_id": int(row["customer_id"]),
-            "order_id": int(row["order_id"]),
-            "fraud_type": random.choice(["Payment Fraud", "Account Takeover", "Refund Abuse", "Promo Abuse"]),
-            "risk_score": round(random.uniform(65.0, 98.0), 2),
-            "detection_method": random.choice(["Rule Engine", "Anomaly Detection", "Behavioral Score"]),
-            "detected_at": datetime.now(),
-            "is_confirmed": random.random() < 0.25,
-        })
-
-    bulk_insert(pd.DataFrame(fraud_records), "fraud_logs", if_exists="append")
-    logger.info("Fraud logs generated.")
+    logger.info("Generating ML fraud anomaly logs...")
+    try:
+        from fraud_detection import FraudDetector
+        detector = FraudDetector()
+        detector.detect_fraud()
+    except Exception as e:
+        logger.warning(f"Could not run real-time fraud detection during ETL: {e}")
 
 
-def run_pipeline():
-    logger.info("Starting ETL Pipeline...")
-    
+def run_etl():
     if not test_db_connection():
-        logger.error("Unable to connect to the configured database. Run db_setup.py and verify your .env settings before retrying.")
+        logger.error("Database connection failed. Please ensure PostgreSQL or SQLite is initialized.")
         return
 
-    # Check if data already exists
-    count = fetch_data("SELECT COUNT(*) FROM customers").iloc[0,0]
-    if count > 0:
-        logger.info("Data already exists. Skipping ETL generation.")
-        return
-
-    generate_customers(NUM_CUSTOMERS)
+    logger.info("Starting Full ETL Pipeline...")
     generate_categories_and_suppliers()
     generate_products(NUM_PRODUCTS)
+    generate_customers(NUM_CUSTOMERS)
     generate_orders(NUM_ORDERS)
     generate_customer_segments()
     generate_fraud_logs()
 
     if not is_sqlite():
         refresh_materialized_views()
-        logger.info("Power BI materialized views refreshed.")
-    
-    logger.info("ETL Pipeline completed successfully.")
+
+    logger.info("ETL Pipeline execution completed successfully!")
 
 if __name__ == "__main__":
-    run_pipeline()
+    run_etl()

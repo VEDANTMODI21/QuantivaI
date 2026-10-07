@@ -22,6 +22,23 @@ def run_sql_file(engine, path: Path):
 def create_sqlite_schema(engine):
     logger.info("Creating SQLite schema...")
     sqlite_sql = """
+PRAGMA foreign_keys = OFF;
+
+DROP TABLE IF EXISTS ratings;
+DROP TABLE IF EXISTS inventory_transactions;
+DROP TABLE IF EXISTS fraud_logs;
+DROP TABLE IF EXISTS refunds;
+DROP TABLE IF EXISTS payments;
+DROP TABLE IF EXISTS order_items;
+DROP TABLE IF EXISTS orders;
+DROP TABLE IF EXISTS inventory;
+DROP TABLE IF EXISTS products;
+DROP TABLE IF EXISTS suppliers;
+DROP TABLE IF EXISTS categories;
+DROP TABLE IF EXISTS customer_segments;
+DROP TABLE IF EXISTS customer_sessions;
+DROP TABLE IF EXISTS customers;
+
 PRAGMA foreign_keys = ON;
 
 CREATE TABLE IF NOT EXISTS customers (
@@ -190,6 +207,13 @@ CREATE TABLE IF NOT EXISTS ratings (
     FOREIGN KEY(customer_id) REFERENCES customers(customer_id) ON DELETE CASCADE,
     FOREIGN KEY(product_id) REFERENCES products(product_id) ON DELETE CASCADE
 );
+
+CREATE INDEX IF NOT EXISTS idx_orders_customer ON orders(customer_id);
+CREATE INDEX IF NOT EXISTS idx_orders_date ON orders(order_date);
+CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items(order_id);
+CREATE INDEX IF NOT EXISTS idx_order_items_prod ON order_items(product_id);
+CREATE INDEX IF NOT EXISTS idx_payments_order ON payments(order_id);
+CREATE INDEX IF NOT EXISTS idx_refunds_order ON refunds(order_id);
     """
     statements = [stmt.strip() for stmt in sqlite_sql.split(';') if stmt.strip()]
     with engine.begin() as conn:

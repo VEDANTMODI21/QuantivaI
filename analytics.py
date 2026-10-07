@@ -7,6 +7,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.metrics.pairwise import cosine_similarity
 
 try:
+    # pyrefly: ignore [missing-import]
     from .utils import fetch_data
 except ImportError:
     try:

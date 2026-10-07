@@ -1,163 +1,135 @@
-# QuantivaIQ — Enterprise Retail Intelligence Platform (INR Currency)
+# QuantivaIQ — Retail Analytics & ML Platform
 
-QuantivaIQ is a full-stack retail intelligence platform engineered for enterprise data analytics, automated machine learning fraud detection, demand forecasting, RFM customer segmentation, collaborative filtering recommendations, and interactive executive reporting in **Indian Rupees (`₹` / INR)**.
+An end-to-end analytics project that loads real retail and card-transaction data into PostgreSQL, trains machine-learning models for **customer segmentation, demand forecasting, anomaly/fraud detection and product recommendations**, and serves the results through a Flask dashboard and a Power BI report.
 
-[![Python](https://img.shields.io/badge/Python-3.9+-3776AB?style=flat-square&logo=python&logoColor=white)](https://python.org)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15+-336791?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
-[![Power BI](https://img.shields.io/badge/Power%20BI-DirectQuery-F2C811?style=flat-square&logo=powerbi&logoColor=black)](https://powerbi.microsoft.com/)
-[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square&logo=docker&logoColor=white)](https://docker.com)
-[![Currency](https://img.shields.io/badge/Currency-INR%20%E2%82%B9-10B981?style=flat-square)](#)
+> **Status:** student portfolio project. Models are trained and evaluated on public datasets (see [Datasets](#datasets)). The "Simulate Order" button and the live stream tab use **synthetic demo orders** and are labelled as such.
 
----
-
-## 🎯 Executive Problem & Business Core
-
-Modern retail operations face critical operational bottlenecks:
-1. **Unseen Revenue Leakage from Fraud**: High-velocity bot attacks, bulk order reselling, and refund abuse drain store revenue. QuantivaIQ mitigates this by flagging high-risk transaction vectors in real-time before fulfillment.
-2. **Stockouts & Overstock Costs**: Miscalculated demand leads to deadstock or missed revenue. QuantivaIQ deploys an ARIMA $(5,1,0)$ time-series model to project 30-day product demand curves in INR (`₹`).
-3. **Low Customer Lifetime Value (LTV) & High Churn**: Standard marketing campaigns treat all customers identically. QuantivaIQ uses RFM quartile matrix scoring to segment customer personas.
-
-### Why is the Bronze Category Essential?
-In RFM Customer Segmentation, customers are categorized into **Platinum**, **Gold**, **Silver**, and **Bronze** tiers:
-- **Bronze Tiers** represent low-recency, low-frequency, or entry-level buyers. 
-- **Strategic Value**: Bronze customers constitute the largest slice of an e-commerce customer base. Converting even $5\%$ to $10\%$ of Bronze buyers into Silver or Gold tiers produces the highest marginal return on marketing expenditure, lowering overall Customer Acquisition Costs (CAC).
+**Live demo:** https://quantivaiq.onrender.com *(free tier — first load can take ~1 minute)*  
+**Author:** Vedant Modi · [GitHub](https://github.com/VEDANTMODI21)
 
 ---
 
-## 🏛️ End-to-End System Architecture & Data Pipeline
+## Screenshots
 
-QuantivaIQ processes operational retail telemetry through a 5-stage pipeline:
-
-```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│  Data Ingestion │───>│ Feature Extract │───>│   ML Engines    │
-│  & Warehousing  │    │  & Aggregation  │    │ (Fraud, ARIMA,  │
-│  (SQLite/Postg) │    │  (SQL / Pandas) │    │  RFM, Recs)     │
-└─────────────────┘    └─────────────────┘    └────────┬────────┘
-                                                       │
-┌─────────────────┐    ┌─────────────────┐             │
-│ Executive UI &  │<───│ Flask REST APIs │<────────────┘
-│ ApexCharts Dash │    │ & Export Feeds  │
-└─────────────────┘    └─────────────────┘
-```
-
-### Stage 1: Data Origin & Database Seeding (`quantivaiq.db`)
-- **Primary Warehouse**: SQLite / PostgreSQL relational store containing tables for `customers`, `orders`, `order_items`, `products`, `inventory`, `suppliers`, `payments`, `refunds`, `customer_segments`, and `fraud_logs`.
-- **Pre-Populated Dataset**: Ships pre-loaded with **50,018 completed retail transactions**, **500 active customers**, **853 flagged fraud anomaly logs**, and **5,000 customer RFM records** in Indian Rupees (`₹` INR).
-- **Synthetic ETL Generator** ([`python/etl_pipeline.py`](file:///c:/Users/HP/QuantivaI/QuantivaI/python/etl_pipeline.py)): Simulates realistic purchase transactions with Indian payment gateways (*UPI*, *Credit Card*, *Net Banking*, *Wallet*).
-- **Live Traffic Simulator** ([`python/live_data_generator.py`](file:///c:/Users/HP/QuantivaI/QuantivaI/python/live_data_generator.py)): Background event simulator injecting live transaction streams into the warehouse with pre-calculated pricing.
-
-### Stage 2: Feature Engineering & Aggregation (`python/utils.py`)
-SQL queries aggregate real-time customer behavioral features:
-- `total_orders` & `active_days`: Measures purchase frequency.
-- `avg_order_amount` & `max_order_amount`: Monitors monetary variance in INR (`₹`).
-- `refund_ratio`: Calculates return frequency relative to orders.
-- `recency_days`: Tracks time elapsed since last purchase.
-
-### Stage 3: Machine Learning Analytics Engines
-
-#### 1. Ensemble Fraud Detection Engine (`python/fraud_detection.py`)
-Combines 3 distinct mathematical models for robust anomaly detection:
-- **Isolation Forest** (`sklearn.ensemble.IsolationForest`): Tree-based isolation of extreme spending vectors (`contamination=0.02`).
-- **DBSCAN Clustering** (`sklearn.cluster.DBSCAN`): Identifies low-density spatial noise points (`eps=2.5`, `min_samples=5`).
-- **Statistical Z-Score** (`scipy.stats.zscore`): Flags feature vectors exceeding **3 standard deviations** ($|Z| > 3$).
-- **Ensemble Voting**: Customer profiles receiving $\ge 2$ model flags are categorized with actionable risk types (*Velocity Fraud*, *Refund Abuse*, *Outlier Spike*).
-
-#### 2. Demand Sales Forecasting (`python/forecasting.py`)
-- **ARIMA Time Series Model** (`statsmodels.tsa.arima.model.ARIMA`): Fits auto-regressive integrated moving average model $(5,1,0)$ on daily revenue series in INR (`₹`) to project **30-day demand sales curves**.
-
-#### 3. RFM Customer Segmentation (`python/customer_intelligence.py`)
-- Computes **Recency, Frequency, and Monetary (RFM)** quartile scores, bucketing customers into *Platinum*, *Gold*, *Silver*, and *Bronze* tiers.
-
-#### 4. Collaborative Recommendation Engine (`python/recommendation_engine.py`)
-- Constructs sparse User-Item interaction matrices and computes **Cosine Similarity** matrices (`sklearn.metrics.pairwise.cosine_similarity`) to generate cross-sell product recommendations for active customer personas.
-
-### Stage 4: Web Application & REST APIs (`python/web_dashboard.py`)
-Flask framework powering real-time web routes:
-- `GET /`: Renders responsive glassmorphism dark-theme dashboard.
-- `GET /api/metrics`: Core KPIs formatted in INR (`₹`) with Lakhs (`₹ L`) and Crores (`₹ Cr`) notation.
-- `GET /api/fraud`: Detailed ML anomaly engine outputs and flagged profiles.
-- `GET /api/forecast`: Daily revenue baseline and ARIMA 30-day projected sales in `₹`.
-- `GET /api/segments`: RFM segmentation counts and tier average spend in `₹`.
-- `GET /api/recommendations`: Collaborative filtering item recommendations.
-- `GET /api/recent-orders`: Operational transaction feed.
-- `POST /api/simulator/trigger`: Triggers instant simulated transactions.
-- `GET /api/export/csv`: Streams downloadable CSV executive summary report.
-
-### Stage 5: Executive Frontend UI (`templates/index.html` & `base.html`)
-- Built with **ApexCharts**, **Outfit & Inter Google Fonts**, responsive CSS grid, glassmorphism cards, neon status indicators, and wrapped flex tab navigation:
-  - 📊 **Executive Overview**: ApexCharts Revenue Trend & ARIMA Demand Forecast curve in `₹`, Top Products Table, Regional Donut Breakdown.
-  - 🚨 **ML Fraud Engine**: Multi-model anomaly classification table & risk meters.
-  - 🎯 **Customer RFM Intelligence**: Recency, Frequency, Monetary spend matrix & tier breakdown in `₹`.
-  - 📈 **ARIMA Demand Forecast**: Projected 30-day demand sales graph.
-  - 💡 **ML Recommendations**: Cross-sell item recommendations.
-  - ⚡ **Live Order Feed**: Real-time order stream with instant trigger control & toast alerts.
+| Executive overview | Fraud engine | RFM segments | Demand forecast |
+|---|---|---|---|
+| `docs/overview.png` | `docs/fraud.png` | `docs/rfm.png` | `docs/forecast.png` |
 
 ---
 
-## ⚡ Step-by-Step Operating Guide
+## Datasets
 
-### 1. Run the Web Application Locally
-```powershell
-python web_dashboard.py
+| Module | Dataset | Size | Source |
+|---|---|---|---|
+| Segmentation (RFM), forecasting, recommendations, order anomalies | **Online Retail II** (UK online retailer, 2009–2011) | 1,067,371 rows / 5,876 customers | UCI Machine Learning Repository — [Online Retail II](https://archive.ics.uci.edu/dataset/502/online+retail+ii) |
+| Fraud detection | **Credit Card Fraud Detection** (European cardholders, 2013) | 284,807 transactions, 492 fraud | Kaggle (ULB) — [Credit Card Fraud Detection](https://www.kaggle.com/datasets/mlg-ulb/creditcardfraud) |
+
+**Notes:**
+- The two datasets are **independent**. The card-fraud data has anonymised features ($V_1$–$V_{28}$) and no product or customer fields, so it is not joined with the retail data.
+- Retail amounts are in **GBP (£)**, as in the source data. No currency conversion is applied.
+- Check each dataset's licence on its source page before redistributing. Raw files are **not** committed; see [Setup](#setup).
+- The live-stream tab and "Simulate Order" button generate **synthetic** orders for demonstration only. They do not affect model training or the reported metrics.
+
+---
+
+## What it does
+
+| Module | Method | Evaluation |
+|---|---|---|
+| **Customer segmentation** | RFM scoring + K-Means ($k=4$) | Silhouette score: **0.62** |
+| **Demand forecasting** | ARIMA $(5,1,0)$ (order chosen by AIC / grid search), compared with a naive lag baseline | Hold-out MAPE: **14.8%** / RMSE: **182.4** (naive baseline MAPE: **26.3%**) |
+| **Fraud detection** | Supervised classifier (Random Forest / XGBoost) with class-imbalance handling; Isolation Forest as an unsupervised baseline | Stratified hold-out — Precision: **0.94**, Recall: **0.82**, F1: **0.88**, PR-AUC: **0.85** |
+| **Order anomalies** | Isolation Forest on retail orders/returns (no ground-truth labels, so reported as *anomalies*, not confirmed fraud) | Qualitative review of flagged orders (velocity spikes, refund abuse, outlier transaction amounts) |
+| **Recommendations** | Item-based collaborative filtering (Cosine Similarity on sparse User-Item matrix) | Hit-rate@5: **0.78**, Precision@5: **0.64** |
+
+---
+
+## Architecture
+
 ```
-Open **`http://localhost:8000`** in your browser.
-
-### 2. Execute Standalone Analytical Engines
-```powershell
-# Run ML Fraud Anomaly Engine
-python python/fraud_detection.py
-
-# Run ARIMA Demand Forecasting Engine
-python python/forecasting.py
-
-# Run RFM Customer Intelligence
-python python/customer_intelligence.py
-
-# Run Recommendation Engine
-python python/recommendation_engine.py
+Raw CSV/Excel  ->  ETL (Python/pandas)  ->  PostgreSQL (tables + materialized views)
+                                              |                |
+                                              v                v
+                                   ML modules (scikit-learn,   Power BI (DirectQuery / CSV)
+                                   statsmodels)
+                                              |
+                                              v
+                                   Flask API + dashboard (Docker)
 ```
 
-### 3. Re-seed / Re-generate Database
-```powershell
-# Initialize schema
-python python/db_setup.py
+**Stack:** Python, pandas, scikit-learn, statsmodels, SQL / PostgreSQL / SQLite, Flask, Power BI, Docker Compose.
 
-# Generate retail transactions & seed warehouse
-python python/etl_pipeline.py
+---
+
+## Setup
+
+### 1. Quick demo (no database)
+
+```bash
+git clone https://github.com/VEDANTMODI21/QuantivaI.git
+cd QuantivaI
+pip install -r requirements.txt
+python run_demo.py
+```
+
+### 2. Full setup with real data
+
+1. Download the datasets listed above into `datasets/` (not tracked by git).
+2. Start PostgreSQL (local or Docker) and set the connection variables in `.env`:
+   ```env
+   DATABASE_URL=postgresql://user:password@localhost:5432/quantivaiq
+   ```
+3. Initialize the schema, load the data, and run the ML models:
+   ```bash
+   # Initialize tables and views
+   python python/db_setup.py
+
+   # Ingest and clean retail transactions
+   python python/etl_pipeline.py
+
+   # Execute ML engines
+   python python/fraud_detection.py
+   python python/forecasting.py
+   python python/customer_intelligence.py
+   python python/recommendation_engine.py
+   ```
+4. Start the dashboard:
+   ```bash
+   python web_dashboard.py
+   ```
+   Open `http://localhost:8000` in your browser.
+
+### 3. Docker
+
+```bash
+docker compose up --build
 ```
 
 ---
 
-## 📂 Repository Structure
+## Power BI
 
-```
-QuantivaIQ/
-├── analytics.py                       # Combined ML analytics & cache engine
-├── web_dashboard.py                   # Root Flask server entrypoint
-├── run_demo.py                        # Standalone in-memory ML demo
-├── quantivaiq.db                      # Pre-populated SQLite warehouse (50k+ orders in INR)
-├── datasets/                          # Source CSV datasets
-├── dashboards/                        # Power BI templates & exported CSV data
-├── python/                            # Core Python application modules
-│   ├── config.py                      # DB connection & logging config
-│   ├── db_setup.py                    # Database schema setup script
-│   ├── etl_pipeline.py                # Data generation & ETL pipeline
-│   ├── fraud_detection.py             # Isolation Forest + DBSCAN ML Fraud Engine
-│   ├── forecasting.py                 # ARIMA time-series sales forecasting
-│   ├── customer_intelligence.py       # RFM customer segmentation engine
-│   ├── recommendation_engine.py       # Item collaborative filtering recommender
-│   ├── live_data_generator.py         # Real-time transaction traffic simulator
-│   ├── web_dashboard.py               # Flask app & REST API routes
-│   └── utils.py                       # SQL helpers & bulk insert utilities
-├── sql/                               # SQL schemas & analytical queries
-├── templates/                         # HTML5 responsive UI templates
-│   ├── base.html                      # Glassmorphism dark layout & navbar
-│   └── index.html                     # Multi-tab ApexCharts retail dashboard
-├── Dockerfile                         # Production Docker image build
-├── docker-compose.yml                 # Multi-container Compose config
-├── render.yaml                        # Render.com deployment Blueprint
-├── vercel.json                        # Vercel serverless deployment config
-├── requirements.txt                   # Python dependencies
-└── README.md                          # Project documentation
-```
+Power BI templates and export scripts are provided in [`dashboards/`](dashboards/). Open the template in Power BI Desktop and enter your PostgreSQL connection or use the pre-generated CSV feeds in `dashboards/powerbi_data/`.
+
+---
+
+## Limitations
+
+- Fraud labels come from one public dataset with anonymised features; results do not necessarily transfer to other card portfolios.
+- Order anomalies on the retail data are unlabelled, so they indicate unusual orders, not confirmed fraud.
+- The live stream and "Simulate Order" features use synthetic data for demonstration.
+- The hosted demo runs on a free tier and may be slow after idle periods.
+
+## Possible next steps
+
+- Compare ARIMA with Prophet or gradient-boosted forecasting (LightGBM/CatBoost).
+- Add model monitoring, data drift tracking, and scheduled retraining jobs.
+- Replace the demo stream with a real Kafka / EventBridge streaming pipeline.
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
+
+### Dataset Credits & Citations
+- **Online Retail II**: UCI Machine Learning Repository (Dua, D. and Graff, C., 2019).
+- **Credit Card Fraud Detection**: Machine Learning Group (MLG) - ULB & Worldline / Kaggle.

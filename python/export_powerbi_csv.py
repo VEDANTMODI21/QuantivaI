@@ -37,10 +37,12 @@ EXPORT_QUERIES = {
 }
 
 
+from sqlalchemy import text
+
 def fetch_df(query):
     engine = get_engine()
     with engine.connect() as conn:
-        return pd.read_sql(query, conn)
+        return pd.read_sql(text(query), conn)
 
 
 def export_table(table_name):

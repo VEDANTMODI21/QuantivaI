@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>QuantivalQ India Dashboard</title>
+<title>QuantivaIQ Platform</title>
 <style>
 :root{--bg:#0b0d17;--card:#12162a;--bd:#232845;--tx:#e8eaf6;--mu:#8b93b8;--ac:#8b5cf6}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:15px system-ui,sans-serif;padding:32px;max-width:1300px;margin:auto}
@@ -14,8 +14,8 @@ td:last-child,th:last-child{text-align:right}.bar{height:8px;background:var(--ac
 svg{width:100%;height:150px}
 </style></head><body>
 <span class="pill" id="pill">LIVE · refreshes every 10s</span>
-<h1>Quantival<span>Q</span> India Dashboard</h1>
-<p class="sub">Retail analytics (₹ INR) · sales, fraud, segments, forecast &amp; recommendations in one view</p>
+<h1>Quantiva<span>IQ</span> Platform</h1>
+<p class="sub">Retail analytics (£ GBP) · sales, fraud &amp; anomalies, segments, forecast &amp; recommendations in one view</p>
 {% if not db_ok %}<p class="err">Database unavailable: {{ db_error }}</p>{% endif %}
 <div class="grid k">
 <div class="c"><h3>Total customers</h3><div class="big" id="cu">–</div></div>
@@ -30,22 +30,22 @@ svg{width:100%;height:150px}
 <div class="c"><h3>Top suspicious customers</h3><table id="fd"></table></div>
 <div class="c"><h3>Recommended products</h3><table id="rc"></table></div></div>
 <script>
-const inr=v=>v>=1e7?'₹'+(v/1e7).toFixed(2)+' Cr':v>=1e5?'₹'+(v/1e5).toFixed(2)+' L':'₹'+Math.round(v).toLocaleString('en-IN');
+const gbp=v=>v>=1e6?'£'+(v/1e6).toFixed(2)+'M':v>=1e3?'£'+(v/1e3).toFixed(1)+'k':'£'+Number(v).toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2});
 const $=id=>document.getElementById(id), rows=(a,f)=>a.map(f).join('');
 const bad=(o,id)=>o&&o.error&&($(id).innerHTML='<tr><td class="err">'+o.error+'</td></tr>',true);
 function line(h,f){const all=h.concat(f);if(all.length<2)return'';const mx=Math.max(...all),mn=Math.min(...all),x=i=>i/(all.length-1)*400,y=v=>140-(v-mn)/((mx-mn)||1)*130;
 const p=(a,o)=>a.map((v,i)=>x(i+o)+','+y(v)).join(' ');
 return`<polyline fill="none" stroke="#8b5cf6" stroke-width="2" points="${p(h,0)}"/><polyline fill="none" stroke="#10b981" stroke-width="2" stroke-dasharray="5" points="${p(f,h.length)}"/>`}
 async function load(){try{const d=await (await fetch('/api/metrics')).json();
-$('cu').textContent=d.total_customers.toLocaleString('en-IN');$('or').textContent=d.total_orders.toLocaleString('en-IN');
-$('rv').textContent=inr(d.total_revenue);$('fr').textContent=d.fraud&&d.fraud.flagged!=null?d.fraud.flagged:d.fraud_cases;
+$('cu').textContent=d.total_customers.toLocaleString('en-GB');$('or').textContent=d.total_orders.toLocaleString('en-GB');
+$('rv').textContent=gbp(d.total_revenue);$('fr').textContent=d.fraud&&d.fraud.flagged!=null?d.fraud.flagged:d.fraud_cases;
 const mx=Math.max(...d.top_products.map(r=>r.revenue));
-$('tp').innerHTML=rows(d.top_products,r=>`<tr><td>${r.product_name}<div class="bar" style="width:${r.revenue/mx*100}%"></div></td><td>${inr(r.revenue)}</td></tr>`);
-$('rg').innerHTML=rows(d.revenue_by_region,r=>`<tr><td>${r.region}</td><td>${inr(r.revenue)}</td></tr>`);
-if(!bad(d.segments,'sg'))$('sg').innerHTML=rows(d.segments,r=>`<tr><td>${r.segment}</td><td>${r.customers.toLocaleString('en-IN')}</td></tr>`);
-if(!bad(d.fraud,'fd'))$('fd').innerHTML='<tr><th>Customer</th><th>Avg order · votes</th></tr>'+rows(d.fraud.top,r=>`<tr><td>#${r.customer_id}</td><td>${inr(r.avg)} · ${r.votes}/3</td></tr>`);
+$('tp').innerHTML=rows(d.top_products,r=>`<tr><td>${r.product_name}<div class="bar" style="width:${r.revenue/mx*100}%"></div></td><td>${gbp(r.revenue)}</td></tr>`);
+$('rg').innerHTML=rows(d.revenue_by_region,r=>`<tr><td>${r.region}</td><td>${gbp(r.revenue)}</td></tr>`);
+if(!bad(d.segments,'sg'))$('sg').innerHTML=rows(d.segments,r=>`<tr><td>${r.segment_name||r.segment}</td><td>${r.customers.toLocaleString('en-GB')}</td></tr>`);
+if(!bad(d.fraud,'fd'))$('fd').innerHTML='<tr><th>Customer</th><th>Avg order · votes</th></tr>'+rows(d.fraud.top,r=>`<tr><td>#${r.customer_id}</td><td>${r.avg_formatted||gbp(r.avg)} · ${r.votes}/3</td></tr>`);
 if(!bad(d.recs,'rc'))$('rc').innerHTML=rows(d.recs,r=>`<tr><td>#${r.customer_id}</td><td>${r.items.join(', ')}</td></tr>`);
-if(d.forecast&&!d.forecast.error){$('fc').innerHTML=line(d.forecast.history,d.forecast.forecast);$('fcn').textContent=d.forecast.forecast.length?'Next 14 days avg: '+inr(d.forecast.forecast.reduce((a,b)=>a+b,0)/d.forecast.forecast.length)+'/day':'Forecast unavailable'}
+if(d.forecast&&!d.forecast.error){$('fc').innerHTML=line(d.forecast.history,d.forecast.forecast);$('fcn').textContent=d.forecast.forecast.length?'Next 14 days avg: '+gbp(d.forecast.forecast.reduce((a,b)=>a+b,0)/d.forecast.forecast.length)+'/day':'Forecast unavailable'}
 }catch(e){$('pill').textContent='OFFLINE'}}
 load();setInterval(load,10000);
 </script></body></html>

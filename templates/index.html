@@ -16,10 +16,10 @@
         <svg style="width:18px;height:18px;fill:var(--accent-emerald)" viewBox="0 0 24 24"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>
       </div>
       <div class="kpi-value" id="kpi-total-revenue" style="color: var(--accent-emerald);">
-        {{ total_revenue_formatted if total_revenue_formatted else ('₹ {:,.2f}'.format(total_revenue)) }}
+        {{ total_revenue_formatted if total_revenue_formatted else ('£ {:,.2f}'.format(total_revenue)) }}
       </div>
       <div class="kpi-subtext positive">
-        <span>▲ Live database metrics</span>
+        <span id="kpi-live-indicator">▲ Real-time auto-updating stream</span>
       </div>
     </div>
 
@@ -41,11 +41,11 @@
         <span>Active Retail Customers</span>
         <svg style="width:18px;height:18px;fill:var(--accent-purple)" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
       </div>
-      <div class="kpi-value">
+      <div class="kpi-value" id="kpi-total-customers">
         {{ '{:,}'.format(total_customers) }}
       </div>
       <div class="kpi-subtext positive">
-        <span>Avg Spend: {{ avg_order_value_formatted }}</span>
+        <span>Avg Spend: <span id="kpi-avg-spend">{{ avg_order_value_formatted }}</span></span>
       </div>
     </div>
 
@@ -54,7 +54,7 @@
         <span>Flagged Anomaly Cases</span>
         <svg style="width:18px;height:18px;fill:var(--accent-rose)" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
       </div>
-      <div class="kpi-value" style="color: var(--accent-rose);">
+      <div class="kpi-value" id="kpi-fraud-cases" style="color: var(--accent-rose);">
         {{ '{:,}'.format(fraud_cases) }}
       </div>
       <div class="kpi-subtext warning">
@@ -66,11 +66,14 @@
   <!-- Navigation Tabs -->
   <div class="nav-tabs">
     <button class="nav-tab active" onclick="switchTab('overview', this)">📊 Executive Overview</button>
-    <button class="nav-tab" onclick="switchTab('fraud', this)">🚨 ML Fraud Engine</button>
+    <button class="nav-tab" onclick="switchTab('fraud', this)">🚨 ML Fraud &amp; Anomaly Engine</button>
     <button class="nav-tab" onclick="switchTab('segmentation', this)">🎯 Customer RFM Intelligence</button>
     <button class="nav-tab" onclick="switchTab('forecasting', this)">📈 ARIMA Demand Forecast</button>
     <button class="nav-tab" onclick="switchTab('recommendations', this)">💡 ML Recommendations</button>
-    <button class="nav-tab" onclick="switchTab('livefeed', this)">⚡ Real-Time Stream</button>
+    <button class="nav-tab" onclick="switchTab('livefeed', this)">
+      <span style="width:8px;height:8px;border-radius:50%;background:#10B981;display:inline-block;animation:pulse 1.5s infinite;"></span>
+      ⚡ Live Stream Feed
+    </button>
   </div>
 
   <!-- TAB 1: EXECUTIVE OVERVIEW -->
@@ -81,7 +84,7 @@
         <div class="card-header">
           <h3 class="card-title">
             <svg style="width:20px;height:20px;fill:var(--accent-indigo)" viewBox="0 0 24 24"><path d="M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.09-4-4L2 15.66z"/></svg>
-            Revenue Performance & 30-Day Demand Forecast (in INR ₹)
+            Revenue Performance &amp; 30-Day Demand Forecast (in GBP £)
           </h3>
           <span class="badge badge-success">ARIMA (5,1,0) Engine</span>
         </div>
@@ -93,7 +96,7 @@
         <div class="card-header">
           <h3 class="card-title">
             <svg style="width:20px;height:20px;fill:var(--accent-purple)" viewBox="0 0 24 24"><path d="M19 6h-2c0-2.76-2.24-5-5-5S7 3.24 7 6H5c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-7-3c1.66 0 3 1.34 3 3H9c0-1.66 1.34-3 3-3z"/></svg>
-            Top Performing Products (in INR ₹)
+            Top Performing Products (in GBP £)
           </h3>
         </div>
         <div style="overflow-x:auto;">
@@ -102,10 +105,10 @@
               <tr>
                 <th>Product Name</th>
                 <th>Units Sold</th>
-                <th style="text-align: right;">Revenue (INR)</th>
+                <th style="text-align: right;">Revenue (GBP)</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody id="top-products-body">
               {% for p in top_products %}
                 <tr>
                   <td style="font-weight: 600; color: #FFFFFF;">{{ p.product_name }}</td>
@@ -123,7 +126,7 @@
         <div class="card-header">
           <h3 class="card-title">
             <svg style="width:20px;height:20px;fill:var(--accent-cyan)" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.53c-.26-.81-1-1.4-1.9-1.4h-1v-3c0-.55-.45-1-1-1h-6v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.4z"/></svg>
-            Regional Revenue Distribution (INR)
+            Regional Revenue Distribution (GBP £)
           </h3>
         </div>
         <div id="chart-regional-donut" style="min-height: 280px;"></div>
@@ -138,12 +141,12 @@
         <div class="card-header">
           <h3 class="card-title" style="color: var(--accent-rose);">
             <svg style="width:20px;height:20px;fill:var(--accent-rose)" viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-5.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>
-            Machine Learning Fraud Anomaly Engine (Isolation Forest + DBSCAN)
+            Machine Learning Fraud Anomaly Engine (Isolation Forest + DBSCAN Ensemble)
           </h3>
-          <span class="badge badge-danger">{{ fraud_cases }} Flagged Profiles</span>
+          <span class="badge badge-danger"><span id="fraud-badge-count">{{ fraud_cases }}</span> Flagged Profiles</span>
         </div>
         <p style="color: var(--text-secondary); margin-top: 0;">
-          Multi-model ensemble anomaly detection flags customers exhibiting velocity fraud, refund abuse, or abnormal order quantities.
+          Multi-model ensemble anomaly detection flags retail accounts exhibiting abnormal order velocities, refund abuse, or transaction outlier spikes.
         </p>
 
         <div style="overflow-x:auto; margin-top: 16px;">
@@ -151,7 +154,7 @@
             <thead>
               <tr>
                 <th>Customer ID</th>
-                <th>Avg Order Amount (INR)</th>
+                <th>Avg Order Amount (GBP)</th>
                 <th>Refund Ratio</th>
                 <th>Ensemble Anomaly Votes</th>
                 <th>Risk Classification</th>
@@ -162,7 +165,7 @@
                 {% for f in analytics.fraud.top %}
                   <tr>
                     <td style="font-weight: 700; color: #FFFFFF;">Customer #{{ f.customer_id }}</td>
-                    <td style="font-weight: 600; color: var(--accent-emerald);">{{ f.avg_formatted if f.avg_formatted else ('₹ ' ~ f.avg) }}</td>
+                    <td style="font-weight: 600; color: var(--accent-emerald);">{{ f.avg_formatted if f.avg_formatted else ('£ ' ~ f.avg) }}</td>
                     <td><span class="badge badge-warning">{{ (f.refund_ratio * 100)|round(1) }}% Refunds</span></td>
                     <td>
                       <div style="display:flex; align-items:center; gap:6px;">
@@ -200,7 +203,7 @@
 
       <div class="card">
         <div class="card-header">
-          <h3 class="card-title">Customer Tier Breakdown & Spend (INR ₹)</h3>
+          <h3 class="card-title">Customer Tier Breakdown &amp; Spend (in GBP £)</h3>
         </div>
         <div style="overflow-x:auto;">
           <table>
@@ -208,10 +211,10 @@
               <tr>
                 <th>Segment Name</th>
                 <th>Customers</th>
-                <th style="text-align: right;">Avg Spend (INR)</th>
+                <th style="text-align: right;">Avg Spend (GBP)</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody id="segments-table-body">
               {% for s in segments %}
                 <tr>
                   <td style="font-weight: 700; color: #FFFFFF;">{{ s.segment_name }}</td>
@@ -233,7 +236,7 @@
         <div class="card-header">
           <h3 class="card-title">
             <svg style="width:20px;height:20px;fill:var(--accent-cyan)" viewBox="0 0 24 24"><path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/></svg>
-            ARIMA Time Series 30-Day Projected Demand (in INR ₹)
+            ARIMA Time Series 30-Day Projected Demand (in GBP £)
           </h3>
           <span class="badge badge-success">Confidence Level: 95%</span>
         </div>
@@ -249,7 +252,7 @@
         <div class="card-header">
           <h3 class="card-title">
             <svg style="width:20px;height:20px;fill:var(--accent-amber)" viewBox="0 0 24 24"><path d="M12 2L1 21h22L12 2zm0 3.47L20.1 19H3.9L12 5.47zM11 10h2v4h-2zm0 5h2v2h-2z"/></svg>
-            Collaborative Filtering Recommendations (Cosine Similarity)
+            Item-Based Collaborative Filtering Recommendations (Cosine Similarity)
           </h3>
         </div>
         <div style="overflow-x:auto;">
@@ -270,7 +273,6 @@
                         <span class="badge badge-success" style="margin-right: 4px; margin-bottom: 4px;">{{ item }}</span>
                       {% endfor %}
                     </td>
-
                   </tr>
                 {% endfor %}
               {% else %}
@@ -283,15 +285,20 @@
     </div>
   </div>
 
-  <!-- TAB 6: LIVE STREAM -->
+  <!-- TAB 6: LIVE STREAM FEED -->
   <div id="tab-livefeed" class="tab-panel">
     <div class="section-grid">
       <div class="card full-width">
         <div class="card-header">
-          <h3 class="card-title">
-            <svg style="width:20px;height:20px;fill:var(--accent-emerald)" viewBox="0 0 24 24"><path d="M13 3h-2v10h2V3zm4.83 2.17l-1.42 1.42C17.99 7.86 19 9.81 19 12c0 3.87-3.13 7-7 7s-7-3.13-7-7c0-2.19 1.01-4.14 2.58-5.42L6.17 5.17C4.23 6.82 3 9.26 3 12c0 4.97 4.03 9 9 9s9-4.03 9-9c0-2.74-1.23-5.18-3.17-6.83z"/></svg>
-            Live Operational Order Feed (INR ₹)
-          </h3>
+          <div>
+            <h3 class="card-title">
+              <svg style="width:20px;height:20px;fill:var(--accent-emerald)" viewBox="0 0 24 24"><path d="M13 3h-2v10h2V3zm4.83 2.17l-1.42 1.42C17.99 7.86 19 9.81 19 12c0 3.87-3.13 7-7 7s-7-3.13-7-7c0-2.19 1.01-4.14 2.58-5.42L6.17 5.17C4.23 6.82 3 9.26 3 12c0 4.97 4.03 9 9 9s9-4.03 9-9c0-2.74-1.23-5.18-3.17-6.83z"/></svg>
+              Live Operational Order Feed (GBP £)
+            </h3>
+            <p style="margin: 4px 0 0; font-size: 0.82rem; color: var(--text-secondary);">
+              <em>Live telemetry stream: new orders auto-refresh every 3.5 seconds.</em>
+            </p>
+          </div>
           <button class="btn btn-primary" onclick="triggerSimulation()">⚡ Simulate Instant Transaction</button>
         </div>
         <div style="overflow-x:auto;">
@@ -300,10 +307,10 @@
               <tr>
                 <th>Order ID</th>
                 <th>Customer ID</th>
-                <th>Date & Time</th>
+                <th>Date &amp; Time</th>
                 <th>Region</th>
                 <th>Payment Method</th>
-                <th style="text-align: right;">Total Amount (INR)</th>
+                <th style="text-align: right;">Total Amount (GBP)</th>
                 <th>Status</th>
               </tr>
             </thead>
@@ -326,7 +333,7 @@
     </div>
   </div>
 
-  <!-- ApexCharts Render Script -->
+  <!-- ApexCharts Render Script & Real-Time Polling -->
   <script>
     function switchTab(tabId, btn) {
       document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
@@ -335,26 +342,30 @@
       btn.classList.add('active');
     }
 
+    let lastKnownOrderId = null;
+
     async function triggerSimulation() {
       try {
         const btn = event ? event.target : null;
         if (btn) {
           btn.disabled = true;
           btn.dataset.oldText = btn.innerHTML;
-          btn.innerHTML = '⏳ Simulating...';
+          btn.innerHTML = '⏳ Ingesting...';
         }
         const resp = await fetch('/api/simulator/trigger', { method: 'POST' });
         const res = await resp.json();
         
         if (res.status === 'success') {
           if (typeof showToast === 'function') {
-            showToast(res.message || 'Simulated new transactions successfully!');
+            showToast('⚡ Live transaction injected into stream!');
           }
           await refreshAllMetrics();
           
-          // Switch to Live Stream tab automatically if on another tab
+          // Switch to Live Stream tab automatically if requested
           const liveTabBtn = document.querySelectorAll('.nav-tab')[5];
-          if (liveTabBtn) switchTab('livefeed', liveTabBtn);
+          if (liveTabBtn && !liveTabBtn.classList.contains('active')) {
+            switchTab('livefeed', liveTabBtn);
+          }
         } else {
           if (typeof showToast === 'function') {
             showToast(res.message || 'Simulation error', true);
@@ -374,24 +385,61 @@
     async function refreshAllMetrics() {
       try {
         const resp = await fetch('/api/metrics');
+        if (!resp.ok) return;
         const data = await resp.json();
         
-        // Update Total Revenue & Total Orders KPIs
+        // Update Total Revenue KPI
         const revEl = document.getElementById('kpi-total-revenue');
         if (revEl && data.total_revenue_formatted) {
-          revEl.innerText = data.total_revenue_formatted;
+          if (revEl.innerText !== data.total_revenue_formatted) {
+            revEl.style.transform = 'scale(1.04)';
+            revEl.innerText = data.total_revenue_formatted;
+            setTimeout(() => revEl.style.transform = 'scale(1)', 300);
+          }
         }
+        
+        // Update Total Orders KPI
         const ordEl = document.getElementById('kpi-total-orders');
         if (ordEl && data.total_orders !== undefined) {
-          ordEl.innerText = data.total_orders.toLocaleString();
+          const formattedOrd = data.total_orders.toLocaleString('en-GB');
+          if (ordEl.innerText !== formattedOrd) {
+            ordEl.style.transform = 'scale(1.04)';
+            ordEl.innerText = formattedOrd;
+            setTimeout(() => ordEl.style.transform = 'scale(1)', 300);
+          }
+        }
+
+        // Update Customers & Fraud Cases
+        const custEl = document.getElementById('kpi-total-customers');
+        if (custEl && data.total_customers !== undefined) {
+          custEl.innerText = data.total_customers.toLocaleString('en-GB');
+        }
+        const fraudEl = document.getElementById('kpi-fraud-cases');
+        if (fraudEl && data.fraud_cases !== undefined) {
+          fraudEl.innerText = data.fraud_cases.toLocaleString('en-GB');
+        }
+        const avgEl = document.getElementById('kpi-avg-spend');
+        if (avgEl && data.avg_order_value_formatted) {
+          avgEl.innerText = data.avg_order_value_formatted;
         }
 
         // Update Recent Orders table
         const tbody = document.getElementById('recent-orders-body');
         if (tbody && Array.isArray(data.recent_orders) && data.recent_orders.length > 0) {
-          tbody.innerHTML = data.recent_orders.map(o => `
-            <tr style="animation: fadeIn 0.4s ease;">
-              <td style="font-family: monospace; color: var(--accent-indigo);">#${o.order_id}</td>
+          const newestId = data.recent_orders[0].order_id;
+          if (lastKnownOrderId && lastKnownOrderId !== newestId) {
+            // New order received!
+            if (typeof showToast === 'function') {
+              showToast(`New Order #${newestId} received: ${data.recent_orders[0].amount_formatted}`);
+            }
+          }
+          lastKnownOrderId = newestId;
+
+          tbody.innerHTML = data.recent_orders.map((o, idx) => `
+            <tr style="${idx === 0 ? 'background: rgba(99, 102, 241, 0.08);' : ''}">
+              <td style="font-family: monospace; color: var(--accent-indigo); font-weight: 700;">
+                #${o.order_id} ${idx === 0 ? '<span class="badge badge-success" style="font-size:0.65rem; margin-left:4px;">NEW</span>' : ''}
+              </td>
               <td style="font-weight: 600;">Customer #${o.customer_id}</td>
               <td style="color: var(--text-secondary); font-size: 0.82rem;">${o.order_date}</td>
               <td>${o.region}</td>
@@ -402,14 +450,14 @@
           `).join('');
         }
       } catch(err) {
-        console.error("Error refreshing metrics:", err);
+        console.debug("Background poll tick error:", err);
       }
     }
 
     document.addEventListener("DOMContentLoaded", function () {
       // 1. Revenue & Forecast Chart
-      const forecastHist = {{ (analytics.forecast.history if analytics and analytics.forecast and analytics.forecast.history else [120000, 145000, 160000, 155000, 180000, 210000, 195000, 220000]) | tojson }};
-      const forecastData = {{ (analytics.forecast.forecast if analytics and analytics.forecast and analytics.forecast.forecast else [225000, 230000, 240000, 238000, 250000]) | tojson }};
+      const forecastHist = {{ (analytics.forecast.history if analytics and analytics.forecast and analytics.forecast.history else [1450, 1680, 1920, 1750, 2100, 2450, 2300, 2600]) | tojson }};
+      const forecastData = {{ (analytics.forecast.forecast if analytics and analytics.forecast and analytics.forecast.forecast else [2650, 2720, 2800, 2780, 2900]) | tojson }};
 
       const labelsHist = forecastHist.map((_, i) => `Day -${forecastHist.length - i}`);
       const labelsFc = forecastData.map((_, i) => `Forecast Day +${i+1}`);
@@ -426,18 +474,18 @@
         stroke: { curve: 'smooth', width: 3 },
         dataLabels: { enabled: false },
         series: [
-          { name: 'Historical Daily Revenue (INR)', data: histSeries },
-          { name: 'ARIMA 30-Day Sales Forecast (INR)', data: fcSeries }
+          { name: 'Historical Daily Revenue (£ GBP)', data: histSeries },
+          { name: 'ARIMA 30-Day Sales Forecast (£ GBP)', data: fcSeries }
         ],
         xaxis: { categories: allLabels, labels: { style: { colors: '#94A3B8' } } },
         yaxis: {
           labels: {
             style: { colors: '#94A3B8' },
-            formatter: val => val ? '₹' + (val >= 100000 ? (val/100000).toFixed(1) + 'L' : val.toLocaleString()) : ''
+            formatter: val => val ? '£' + (val >= 1000000 ? (val/1000000).toFixed(1) + 'M' : (val >= 1000 ? (val/1000).toFixed(1) + 'k' : val.toLocaleString('en-GB'))) : ''
           }
         },
         tooltip: {
-          y: { formatter: val => val ? '₹ ' + val.toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '' }
+          y: { formatter: val => val ? '£ ' + val.toLocaleString('en-GB', { maximumFractionDigits: 2 }) : '' }
         },
         grid: { borderColor: 'rgba(255, 255, 255, 0.06)' }
       };
@@ -457,7 +505,7 @@
         theme: { mode: 'dark' },
         legend: { position: 'bottom', labels: { colors: '#94A3B8' } },
         tooltip: {
-          y: { formatter: val => '₹ ' + val.toLocaleString('en-IN', { maximumFractionDigits: 2 }) }
+          y: { formatter: val => '£ ' + val.toLocaleString('en-GB', { maximumFractionDigits: 2 }) }
         }
       };
       new ApexCharts(document.querySelector("#chart-regional-donut"), donutOptions).render();
@@ -477,6 +525,9 @@
         grid: { borderColor: 'rgba(255, 255, 255, 0.06)' }
       };
       new ApexCharts(document.querySelector("#chart-segments-bar"), segOptions).render();
+
+      // Auto-poll every 3.5 seconds for continuous real-time updates
+      setInterval(refreshAllMetrics, 3500);
     });
   </script>
 

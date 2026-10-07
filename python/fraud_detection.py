@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+from scipy import stats
 from sklearn.ensemble import IsolationForest
 from sklearn.cluster import DBSCAN
 from sklearn.preprocessing import StandardScaler
@@ -20,42 +21,34 @@ class FraudDetector:
     def extract_features(self):
         logger.info("Extracting features from data warehouse...")
         query = """
-            WITH customer_stats AS (
-                SELECT 
-                    o.customer_id,
-                    COUNT(o.order_id) AS total_orders,
-                    AVG(o.total_amount) AS avg_order_amount,
-                    MAX(o.total_amount) AS max_order_amount,
-                    STDDEV(o.total_amount) AS amount_stddev,
-                    COUNT(DISTINCT DATE(o.order_date)) AS active_days
-                FROM orders o
-                GROUP BY o.customer_id
-            ),
-            refund_stats AS (
-                SELECT 
-                    o.customer_id,
-                    COUNT(r.refund_id) AS total_refunds
-                FROM refunds r
-                JOIN orders o ON r.order_id = o.order_id
-                GROUP BY o.customer_id
-            )
             SELECT 
-                c.customer_id,
-                COALESCE(cs.total_orders, 0) AS total_orders,
-                COALESCE(cs.avg_order_amount, 0) AS avg_order_amount,
-                COALESCE(cs.max_order_amount, 0) AS max_order_amount,
-                COALESCE(cs.amount_stddev, 0) AS amount_stddev,
-                COALESCE(cs.active_days, 1) AS active_days,
-                COALESCE(rs.total_refunds, 0) AS total_refunds
-            FROM customers c
-            LEFT JOIN customer_stats cs ON c.customer_id = cs.customer_id
-            LEFT JOIN refund_stats rs ON c.customer_id = rs.customer_id
-            WHERE cs.total_orders > 0
+                o.customer_id,
+                COUNT(o.order_id) AS total_orders,
+                AVG(o.total_amount) AS avg_order_amount,
+                MAX(o.total_amount) AS max_order_amount,
+                COALESCE(COUNT(DISTINCT substr(o.order_date, 1, 10)), 1) AS active_days
+            FROM orders o
+            WHERE o.status = 'Completed'
+            GROUP BY o.customer_id
         """
         df = fetch_data(query)
+        if df.empty:
+            return pd.DataFrame()
+            
+        refunds_query = """
+            SELECT o.customer_id, COUNT(r.refund_id) AS total_refunds
+            FROM refunds r
+            JOIN orders o ON r.order_id = o.order_id
+            GROUP BY o.customer_id
+        """
+        refunds_df = fetch_data(refunds_query)
+        df = df.merge(refunds_df, on='customer_id', how='left')
+        df['total_refunds'] = df['total_refunds'].fillna(0)
+        df['amount_stddev'] = (df['max_order_amount'] - df['avg_order_amount']).clip(lower=0)
+        
         # Feature Engineering
         df['refund_ratio'] = df['total_refunds'] / df['total_orders']
-        df['order_frequency'] = df['total_orders'] / df['active_days']
+        df['order_frequency'] = df['total_orders'] / df['active_days'].clip(lower=1)
         df.fillna(0, inplace=True)
         return df
 

@@ -7,6 +7,7 @@ import random
 from faker import Faker
 import pandas as pd
 from datetime import datetime
+import time
 
 try:
     from .config import setup_logging, SIMULATION_INTERVAL, FRAUD_RATE, test_db_connection, is_sqlite
@@ -17,7 +18,7 @@ except ImportError:
 
 
 logger = setup_logging("LiveSimulator")
-fake = Faker()
+fake = Faker('en_GB')
 
 class LiveSimulator:
     def __init__(self):
@@ -31,7 +32,7 @@ class LiveSimulator:
 
     def simulate_traffic(self):
         try:
-            logger.info("Simulating live transaction cycle...")
+            logger.info("Simulating live transaction cycle in GBP (£)...")
             
             # 1. New Sessions
             sessions = []
@@ -51,6 +52,7 @@ class LiveSimulator:
             order_items_list = []
             payments = []
             num_orders = random.randint(1, 3)
+            regions = ["London & South East", "Midlands", "North England", "Scotland & Wales", "International Europe"]
 
             for _ in range(num_orders):
                 cid = random.choice(self.cust_ids)
@@ -58,11 +60,11 @@ class LiveSimulator:
                 num_items = random.randint(1, 3)
                 order_total = 0.0
 
-                # Pre-calculate line items & total amount
+                # Pre-calculate line items & total amount in GBP
                 temp_items = []
                 for _ in range(num_items):
                     p = self.prod_df.sample(1).iloc[0]
-                    qty = random.randint(50, 100) if is_fraud else random.randint(1, 3)
+                    qty = random.randint(40, 100) if is_fraud else random.randint(1, 4)
                     unit_price = float(p['price'])
                     line_tot = qty * unit_price
                     order_total += line_tot
@@ -80,7 +82,7 @@ class LiveSimulator:
                     "status": "Completed",
                     "total_amount": round(order_total, 2),
                     "shipping_address": fake.address().replace('\n', ', '),
-                    "region": random.choice(["North", "South", "East", "West"]),
+                    "region": random.choice(regions),
                     "_items": temp_items,
                     "_is_fraud": is_fraud
                 })
@@ -101,7 +103,7 @@ class LiveSimulator:
                                 order_items_list.append(it)
                             payments.append({
                                 "order_id": oid,
-                                "payment_method": "Credit Card" if ord_info['_is_fraud'] else random.choice(["Credit Card", "UPI", "Wallet"]),
+                                "payment_method": "Credit Card" if ord_info['_is_fraud'] else random.choice(["Credit Card", "Debit Card", "PayPal", "Bank Transfer"]),
                                 "amount": ord_info['total_amount'],
                                 "payment_date": datetime.now(),
                                 "status": "Completed",
@@ -117,7 +119,7 @@ class LiveSimulator:
                 if not is_sqlite():
                     refresh_materialized_views()
                     logger.info("Power BI materialized views refreshed after live simulation cycle.")
-                logger.info(f"Inserted {num_orders} live orders.")
+                logger.info(f"Inserted {num_orders} live orders in GBP.")
                 
         except Exception as e:
             logger.error(f"Error during simulation cycle: {e}")
@@ -129,13 +131,15 @@ def run_simulator():
 
     simulator = LiveSimulator()
     
-    # Schedule job
-    schedule.every(SIMULATION_INTERVAL).seconds.do(simulator.simulate_traffic)
-    
-    logger.info(f"Live Simulation started. Running every {SIMULATION_INTERVAL} seconds...")
-    while True:
-        schedule.run_pending()
-        time.sleep(1)
+    if schedule:
+        schedule.every(SIMULATION_INTERVAL).seconds.do(simulator.simulate_traffic)
+        logger.info(f"Live Simulation started. Running every {SIMULATION_INTERVAL} seconds...")
+        while True:
+            schedule.run_pending()
+            time.sleep(1)
+    else:
+        logger.info("Running single live simulation step...")
+        simulator.simulate_traffic()
 
 if __name__ == "__main__":
     run_simulator()
