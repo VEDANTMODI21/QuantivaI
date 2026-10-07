@@ -5,6 +5,7 @@ import io
 import csv
 import threading
 import time
+import random
 from datetime import datetime
 from flask import Flask, render_template, jsonify, Response, request
 
@@ -211,6 +212,17 @@ def index():
 
 @app.route('/api/metrics')
 def api_metrics():
+    # In serverless environments (Vercel) or when tick requested, simulate incoming stream traffic
+    if os.getenv("VERCEL") or request.args.get("tick") == "1" or random.random() < 0.35:
+        try:
+            try:
+                from .live_data_generator import LiveSimulator
+            except ImportError:
+                from live_data_generator import LiveSimulator
+            LiveSimulator().simulate_traffic()
+        except Exception as e:
+            logger.debug(f"Serverless simulation note: {e}")
+
     metrics = fetch_dashboard_metrics()
     analytics = get_scaled_analytics()
     return jsonify({**metrics, "analytics": analytics})

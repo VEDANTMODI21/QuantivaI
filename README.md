@@ -4,7 +4,7 @@ An end-to-end analytics project that loads real retail and card-transaction data
 
 > **Status:** student portfolio project. Models are trained and evaluated on public datasets (see [Datasets](#datasets)). The "Simulate Order" button and the live stream tab use **synthetic demo orders** and are labelled as such.
 
-**Live demo:** https://quantivaiq.onrender.com *(free tier — first load can take ~1 minute)*  
+**Live demo:** https://quantiva-iq.vercel.app/  
 **Author:** Vedant Modi · [GitHub](https://github.com/VEDANTMODI21)
 
 ---

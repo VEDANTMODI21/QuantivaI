@@ -382,9 +382,9 @@
       }
     }
 
-    async function refreshAllMetrics() {
+    async function refreshAllMetrics(isTick = false) {
       try {
-        const resp = await fetch('/api/metrics');
+        const resp = await fetch('/api/metrics' + (isTick ? '?tick=1' : ''));
         if (!resp.ok) return;
         const data = await resp.json();
         
@@ -526,8 +526,8 @@
       };
       new ApexCharts(document.querySelector("#chart-segments-bar"), segOptions).render();
 
-      // Auto-poll every 3.5 seconds for continuous real-time updates
-      setInterval(refreshAllMetrics, 3500);
+      // Auto-poll every 3.5 seconds with live stream tick for continuous real-time updates
+      setInterval(() => refreshAllMetrics(true), 3500);
     });
   </script>
 
