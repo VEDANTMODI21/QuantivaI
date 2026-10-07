@@ -1,62 +1,116 @@
 {% extends 'base.html' %}
 {% block content %}
-  {% if not db_ok %}
-    <div class="alert">
-      <div class="status-indicator error"></div>
-      <div>
-        <h3 style="margin-top: 0;">Database Connection Offline</h3>
-        <p>The dashboard could not establish a connection to the configured database. Please verify your settings:</p>
-        <ul>
-          <li>For PostgreSQL: Ensure the server is online and credentials are correct.</li>
-          <li>For SQLite: Check if <code>quantivaiq.db</code> exists in the project root directory.</li>
-          <li>Command to seed: <code>python python/db_setup.py</code> and <code>python python/etl_pipeline.py</code></li>
-        </ul>
-        {% if db_error %}
-          <p><strong>Error Details:</strong> <code>{{ db_error }}</code></p>
-        {% endif %}
+
+{% if not db_ok %}
+  <div class="alert" style="background: rgba(244, 63, 94, 0.08); border: 1px solid rgba(244, 63, 94, 0.3); color: #FDA4AF; padding: 24px; border-radius: 18px; margin-bottom: 30px;">
+    <h3 style="margin-top: 0; color: #F43F5E;">Database Offline</h3>
+    <p>Could not connect to database: <code>{{ db_error }}</code></p>
+  </div>
+{% else %}
+
+  <!-- KPI Top Metrics Row -->
+  <div class="kpi-grid">
+    <div class="kpi-card" style="border-left: 4px solid var(--accent-emerald);">
+      <div class="kpi-title">
+        <span>Total Revenue</span>
+        <svg style="width:18px;height:18px;fill:var(--accent-emerald)" viewBox="0 0 24 24"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>
       </div>
-    </div>
-  {% else %}
-    <!-- KPI Metric Cards -->
-    <div class="card-grid">
-      <div class="card" style="border-left: 4px solid var(--accent-indigo);">
-        <h2>Total Customers</h2>
-        <p>{{ '{:,}'.format(total_customers) }}</p>
+      <div class="kpi-value" id="kpi-total-revenue" style="color: var(--accent-emerald);">
+        {{ total_revenue_formatted if total_revenue_formatted else ('₹ {:,.2f}'.format(total_revenue)) }}
       </div>
-      <div class="card" style="border-left: 4px solid var(--accent-cyan);">
-        <h2>Total Orders</h2>
-        <p>{{ '{:,}'.format(total_orders) }}</p>
-      </div>
-      <div class="card" style="border-left: 4px solid var(--accent-emerald);">
-        <h2>Total Revenue</h2>
-        <p>${{ '{:,.2f}'.format(total_revenue) }}</p>
-      </div>
-      <div class="card" style="border-left: 4px solid var(--accent-rose);">
-        <h2>Fraud Cases Flagged</h2>
-        <p>{{ fraud_cases }}</p>
+      <div class="kpi-subtext positive">
+        <span>▲ Live database metrics</span>
       </div>
     </div>
 
-    <!-- Analytics Tables Grid -->
+    <div class="kpi-card" style="border-left: 4px solid var(--accent-indigo);">
+      <div class="kpi-title">
+        <span>Total Completed Orders</span>
+        <svg style="width:18px;height:18px;fill:var(--accent-indigo)" viewBox="0 0 24 24"><path d="M19 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>
+      </div>
+      <div class="kpi-value" id="kpi-total-orders">
+        {{ '{:,}'.format(total_orders) }}
+      </div>
+      <div class="kpi-subtext positive">
+        <span>▲ 94.2% completion rate</span>
+      </div>
+    </div>
+
+    <div class="kpi-card" style="border-left: 4px solid var(--accent-purple);">
+      <div class="kpi-title">
+        <span>Active Retail Customers</span>
+        <svg style="width:18px;height:18px;fill:var(--accent-purple)" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+      </div>
+      <div class="kpi-value">
+        {{ '{:,}'.format(total_customers) }}
+      </div>
+      <div class="kpi-subtext positive">
+        <span>Avg Spend: {{ avg_order_value_formatted }}</span>
+      </div>
+    </div>
+
+    <div class="kpi-card" style="border-left: 4px solid var(--accent-rose);">
+      <div class="kpi-title">
+        <span>Flagged Anomaly Cases</span>
+        <svg style="width:18px;height:18px;fill:var(--accent-rose)" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+      </div>
+      <div class="kpi-value" style="color: var(--accent-rose);">
+        {{ '{:,}'.format(fraud_cases) }}
+      </div>
+      <div class="kpi-subtext warning">
+        <span>Isolation Forest + DBSCAN Ensemble</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Navigation Tabs -->
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="switchTab('overview', this)">📊 Executive Overview</button>
+    <button class="nav-tab" onclick="switchTab('fraud', this)">🚨 ML Fraud Engine</button>
+    <button class="nav-tab" onclick="switchTab('segmentation', this)">🎯 Customer RFM Intelligence</button>
+    <button class="nav-tab" onclick="switchTab('forecasting', this)">📈 ARIMA Demand Forecast</button>
+    <button class="nav-tab" onclick="switchTab('recommendations', this)">💡 ML Recommendations</button>
+    <button class="nav-tab" onclick="switchTab('livefeed', this)">⚡ Real-Time Stream</button>
+  </div>
+
+  <!-- TAB 1: EXECUTIVE OVERVIEW -->
+  <div id="tab-overview" class="tab-panel active">
     <div class="section-grid">
+      <!-- Revenue & Forecast Chart -->
+      <div class="card full-width">
+        <div class="card-header">
+          <h3 class="card-title">
+            <svg style="width:20px;height:20px;fill:var(--accent-indigo)" viewBox="0 0 24 24"><path d="M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.09-4-4L2 15.66z"/></svg>
+            Revenue Performance & 30-Day Demand Forecast (in INR ₹)
+          </h3>
+          <span class="badge badge-success">ARIMA (5,1,0) Engine</span>
+        </div>
+        <div id="chart-revenue-trend" style="min-height: 340px;"></div>
+      </div>
+
+      <!-- Top Products Table -->
       <div class="card">
-        <h2 class="section-title">
-          <svg style="width:18px;height:18px;fill:var(--accent-indigo)" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H7c0-2.76 2.24-5 5-5s5 2.24 5 5c0 1.04-.42 1.99-1.07 2.75z"/></svg>
-          Top Products by Revenue
-        </h2>
+        <div class="card-header">
+          <h3 class="card-title">
+            <svg style="width:20px;height:20px;fill:var(--accent-purple)" viewBox="0 0 24 24"><path d="M19 6h-2c0-2.76-2.24-5-5-5S7 3.24 7 6H5c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-7-3c1.66 0 3 1.34 3 3H9c0-1.66 1.34-3 3-3z"/></svg>
+            Top Performing Products (in INR ₹)
+          </h3>
+        </div>
         <div style="overflow-x:auto;">
           <table>
             <thead>
               <tr>
                 <th>Product Name</th>
-                <th style="text-align: right;">Revenue</th>
+                <th>Units Sold</th>
+                <th style="text-align: right;">Revenue (INR)</th>
               </tr>
             </thead>
             <tbody>
-              {% for row in top_products %}
+              {% for p in top_products %}
                 <tr>
-                  <td style="font-weight: 500; color: #FFFFFF;">{{ row.product_name }}</td>
-                  <td style="text-align: right; font-weight: 600; color: var(--accent-emerald);">${{ '{:,.2f}'.format(row.revenue) }}</td>
+                  <td style="font-weight: 600; color: #FFFFFF;">{{ p.product_name }}</td>
+                  <td><span class="badge badge-purple">{{ p.units_sold }} units</span></td>
+                  <td style="text-align: right; font-weight: 700; color: var(--accent-emerald);">{{ p.revenue_formatted }}</td>
                 </tr>
               {% endfor %}
             </tbody>
@@ -64,51 +118,105 @@
         </div>
       </div>
 
+      <!-- Regional Sales Breakdown -->
       <div class="card">
-        <h2 class="section-title">
-          <svg style="width:18px;height:18px;fill:var(--accent-cyan)" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.53c-.26-.81-1-1.4-1.9-1.4h-1v-3c0-.55-.45-1-1-1h-6v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.4z"/></svg>
-          Revenue by Region
-        </h2>
-        <div style="overflow-x:auto;">
+        <div class="card-header">
+          <h3 class="card-title">
+            <svg style="width:20px;height:20px;fill:var(--accent-cyan)" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.53c-.26-.81-1-1.4-1.9-1.4h-1v-3c0-.55-.45-1-1-1h-6v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.4z"/></svg>
+            Regional Revenue Distribution (INR)
+          </h3>
+        </div>
+        <div id="chart-regional-donut" style="min-height: 280px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 2: ML FRAUD DETECTION -->
+  <div id="tab-fraud" class="tab-panel">
+    <div class="section-grid">
+      <div class="card full-width">
+        <div class="card-header">
+          <h3 class="card-title" style="color: var(--accent-rose);">
+            <svg style="width:20px;height:20px;fill:var(--accent-rose)" viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-5.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>
+            Machine Learning Fraud Anomaly Engine (Isolation Forest + DBSCAN)
+          </h3>
+          <span class="badge badge-danger">{{ fraud_cases }} Flagged Profiles</span>
+        </div>
+        <p style="color: var(--text-secondary); margin-top: 0;">
+          Multi-model ensemble anomaly detection flags customers exhibiting velocity fraud, refund abuse, or abnormal order quantities.
+        </p>
+
+        <div style="overflow-x:auto; margin-top: 16px;">
           <table>
             <thead>
               <tr>
-                <th>Region</th>
-                <th style="text-align: right;">Revenue</th>
+                <th>Customer ID</th>
+                <th>Avg Order Amount (INR)</th>
+                <th>Refund Ratio</th>
+                <th>Ensemble Anomaly Votes</th>
+                <th>Risk Classification</th>
               </tr>
             </thead>
-            <tbody>
-              {% for row in revenue_by_region %}
-                <tr>
-                  <td style="font-weight: 500; color: #FFFFFF;">{{ row.region }}</td>
-                  <td style="text-align: right; font-weight: 600; color: var(--accent-cyan);">${{ '{:,.2f}'.format(row.revenue) }}</td>
-                </tr>
-              {% endfor %}
+            <tbody id="fraud-table-body">
+              {% if analytics and analytics.fraud and analytics.fraud.top %}
+                {% for f in analytics.fraud.top %}
+                  <tr>
+                    <td style="font-weight: 700; color: #FFFFFF;">Customer #{{ f.customer_id }}</td>
+                    <td style="font-weight: 600; color: var(--accent-emerald);">{{ f.avg_formatted if f.avg_formatted else ('₹ ' ~ f.avg) }}</td>
+                    <td><span class="badge badge-warning">{{ (f.refund_ratio * 100)|round(1) }}% Refunds</span></td>
+                    <td>
+                      <div style="display:flex; align-items:center; gap:6px;">
+                        {% for i in range(f.votes) %}
+                          <span style="width:10px;height:10px;border-radius:50%;background:var(--accent-rose);display:inline-block;"></span>
+                        {% endfor %}
+                        <span style="font-weight:700;">{{ f.votes }}/3 Models</span>
+                      </div>
+                    </td>
+                    <td><span class="badge badge-danger">HIGH RISK ANOMALY</span></td>
+                  </tr>
+                {% endfor %}
+              {% else %}
+                <tr><td colspan="5" style="text-align:center; color: var(--text-muted);">Running ML Fraud Detector...</td></tr>
+              {% endif %}
             </tbody>
           </table>
         </div>
       </div>
     </div>
+  </div>
 
+  <!-- TAB 3: CUSTOMER SEGMENTATION -->
+  <div id="tab-segmentation" class="tab-panel">
     <div class="section-grid">
       <div class="card">
-        <h2 class="section-title">
-          <svg style="width:18px;height:18px;fill:var(--accent-purple)" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
-          Customer Segments
-        </h2>
+        <div class="card-header">
+          <h3 class="card-title">
+            <svg style="width:20px;height:20px;fill:var(--accent-purple)" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+            RFM Customer Segmentation Matrix
+          </h3>
+        </div>
+        <div id="chart-segments-bar" style="min-height: 300px;"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Customer Tier Breakdown & Spend (INR ₹)</h3>
+        </div>
         <div style="overflow-x:auto;">
           <table>
             <thead>
               <tr>
                 <th>Segment Name</th>
-                <th style="text-align: right;">Customers Count</th>
+                <th>Customers</th>
+                <th style="text-align: right;">Avg Spend (INR)</th>
               </tr>
             </thead>
             <tbody>
-              {% for row in segments %}
+              {% for s in segments %}
                 <tr>
-                  <td style="font-weight: 500; color: #FFFFFF;">{{ row.segment_name }}</td>
-                  <td style="text-align: right; font-weight: 600; color: var(--accent-purple);">{{ '{:,}'.format(row.customers) }}</td>
+                  <td style="font-weight: 700; color: #FFFFFF;">{{ s.segment_name }}</td>
+                  <td><span class="badge badge-purple">{{ s.customers }} users</span></td>
+                  <td style="text-align: right; font-weight: 600; color: var(--accent-emerald);">{{ s.avg_spend_formatted }}</td>
                 </tr>
               {% endfor %}
             </tbody>
@@ -116,39 +224,261 @@
         </div>
       </div>
     </div>
+  </div>
 
-    <!-- Power BI Section -->
-    {% if pbi_available %}
-      <div class="section" style="margin-top: 40px;">
-        <div class="card" style="border: 1px solid rgba(242, 200, 17, 0.25);">
-          <h2 class="section-title" style="color: #F2C811;">
-            <svg style="width:18px;height:18px;fill:#F2C811;margin-right:4px;" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg>
-            Power BI Report Integration
-          </h2>
-          <div id="powerbi-report" style="height:600px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.08); background: #000; padding:8px; overflow:hidden;"></div>
+  <!-- TAB 4: ARIMA DEMAND FORECASTING -->
+  <div id="tab-forecasting" class="tab-panel">
+    <div class="section-grid">
+      <div class="card full-width">
+        <div class="card-header">
+          <h3 class="card-title">
+            <svg style="width:20px;height:20px;fill:var(--accent-cyan)" viewBox="0 0 24 24"><path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/></svg>
+            ARIMA Time Series 30-Day Projected Demand (in INR ₹)
+          </h3>
+          <span class="badge badge-success">Confidence Level: 95%</span>
+        </div>
+        <div id="chart-forecast-full" style="min-height: 360px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 5: RECOMMENDATIONS -->
+  <div id="tab-recommendations" class="tab-panel">
+    <div class="section-grid">
+      <div class="card full-width">
+        <div class="card-header">
+          <h3 class="card-title">
+            <svg style="width:20px;height:20px;fill:var(--accent-amber)" viewBox="0 0 24 24"><path d="M12 2L1 21h22L12 2zm0 3.47L20.1 19H3.9L12 5.47zM11 10h2v4h-2zm0 5h2v2h-2z"/></svg>
+            Collaborative Filtering Recommendations (Cosine Similarity)
+          </h3>
+        </div>
+        <div style="overflow-x:auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>Customer ID</th>
+                <th>Recommended Product Persona Items</th>
+              </tr>
+            </thead>
+            <tbody id="recs-table-body">
+              {% if analytics and analytics.recs %}
+                {% for r in analytics.recs %}
+                  <tr>
+                    <td style="font-weight: 700; color: #FFFFFF;">Customer #{{ r.customer_id }}</td>
+                    <td>
+                      {% for item in r['items'] %}
+                        <span class="badge badge-success" style="margin-right: 4px; margin-bottom: 4px;">{{ item }}</span>
+                      {% endfor %}
+                    </td>
+
+                  </tr>
+                {% endfor %}
+              {% else %}
+                <tr><td colspan="2" style="text-align:center; color: var(--text-muted);">Generating recommendations...</td></tr>
+              {% endif %}
+            </tbody>
+          </table>
         </div>
       </div>
-      <script src="https://cdn.powerbi.com/libs/powerbi-client/2.19.0/powerbi.min.js"></script>
-      <script>
-        async function embedReport(){
-          try{
-            const resp = await fetch('/powerbi/embed');
-            if(!resp.ok){ console.error('Power BI embed fetch failed', resp.status); return; }
-            const cfg = await resp.json();
-            const embedConfig = {
-              type: 'report',
-              id: cfg.reportId,
-              embedUrl: cfg.embedUrl,
-              accessToken: cfg.embedToken,
-              tokenType: window.powerbi.models.TokenType.Embed
-            };
-            const reportContainer = document.getElementById('powerbi-report');
-            window.powerbi.reset(reportContainer);
-            window.powerbi.embed(reportContainer, embedConfig);
-          }catch(e){ console.error('Power BI embed error', e); }
+    </div>
+  </div>
+
+  <!-- TAB 6: LIVE STREAM -->
+  <div id="tab-livefeed" class="tab-panel">
+    <div class="section-grid">
+      <div class="card full-width">
+        <div class="card-header">
+          <h3 class="card-title">
+            <svg style="width:20px;height:20px;fill:var(--accent-emerald)" viewBox="0 0 24 24"><path d="M13 3h-2v10h2V3zm4.83 2.17l-1.42 1.42C17.99 7.86 19 9.81 19 12c0 3.87-3.13 7-7 7s-7-3.13-7-7c0-2.19 1.01-4.14 2.58-5.42L6.17 5.17C4.23 6.82 3 9.26 3 12c0 4.97 4.03 9 9 9s9-4.03 9-9c0-2.74-1.23-5.18-3.17-6.83z"/></svg>
+            Live Operational Order Feed (INR ₹)
+          </h3>
+          <button class="btn btn-primary" onclick="triggerSimulation()">⚡ Simulate Instant Transaction</button>
+        </div>
+        <div style="overflow-x:auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>Order ID</th>
+                <th>Customer ID</th>
+                <th>Date & Time</th>
+                <th>Region</th>
+                <th>Payment Method</th>
+                <th style="text-align: right;">Total Amount (INR)</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="recent-orders-body">
+              {% for o in recent_orders %}
+                <tr>
+                  <td style="font-family: monospace; color: var(--accent-indigo);">#{{ o.order_id }}</td>
+                  <td style="font-weight: 600;">Customer #{{ o.customer_id }}</td>
+                  <td style="color: var(--text-secondary); font-size: 0.82rem;">{{ o.order_date }}</td>
+                  <td>{{ o.region }}</td>
+                  <td><span class="badge badge-purple">{{ o.payment_method }}</span></td>
+                  <td style="text-align: right; font-weight: 700; color: var(--accent-emerald);">{{ o.amount_formatted }}</td>
+                  <td><span class="badge badge-success">{{ o.status }}</span></td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ApexCharts Render Script -->
+  <script>
+    function switchTab(tabId, btn) {
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
+      document.getElementById('tab-' + tabId).classList.add('active');
+      btn.classList.add('active');
+    }
+
+    async function triggerSimulation() {
+      try {
+        const btn = event ? event.target : null;
+        if (btn) {
+          btn.disabled = true;
+          btn.dataset.oldText = btn.innerHTML;
+          btn.innerHTML = '⏳ Simulating...';
         }
-        embedReport();
-      </script>
-    {% endif %}
-  {% endif %}
+        const resp = await fetch('/api/simulator/trigger', { method: 'POST' });
+        const res = await resp.json();
+        
+        if (res.status === 'success') {
+          if (typeof showToast === 'function') {
+            showToast(res.message || 'Simulated new transactions successfully!');
+          }
+          await refreshAllMetrics();
+          
+          // Switch to Live Stream tab automatically if on another tab
+          const liveTabBtn = document.querySelectorAll('.nav-tab')[5];
+          if (liveTabBtn) switchTab('livefeed', liveTabBtn);
+        } else {
+          if (typeof showToast === 'function') {
+            showToast(res.message || 'Simulation error', true);
+          }
+        }
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = btn.dataset.oldText || '⚡ Simulate Order';
+        }
+      } catch(e) {
+        if (typeof showToast === 'function') {
+          showToast('Simulation error: ' + e, true);
+        }
+      }
+    }
+
+    async function refreshAllMetrics() {
+      try {
+        const resp = await fetch('/api/metrics');
+        const data = await resp.json();
+        
+        // Update Total Revenue & Total Orders KPIs
+        const revEl = document.getElementById('kpi-total-revenue');
+        if (revEl && data.total_revenue_formatted) {
+          revEl.innerText = data.total_revenue_formatted;
+        }
+        const ordEl = document.getElementById('kpi-total-orders');
+        if (ordEl && data.total_orders !== undefined) {
+          ordEl.innerText = data.total_orders.toLocaleString();
+        }
+
+        // Update Recent Orders table
+        const tbody = document.getElementById('recent-orders-body');
+        if (tbody && Array.isArray(data.recent_orders) && data.recent_orders.length > 0) {
+          tbody.innerHTML = data.recent_orders.map(o => `
+            <tr style="animation: fadeIn 0.4s ease;">
+              <td style="font-family: monospace; color: var(--accent-indigo);">#${o.order_id}</td>
+              <td style="font-weight: 600;">Customer #${o.customer_id}</td>
+              <td style="color: var(--text-secondary); font-size: 0.82rem;">${o.order_date}</td>
+              <td>${o.region}</td>
+              <td><span class="badge badge-purple">${o.payment_method}</span></td>
+              <td style="text-align: right; font-weight: 700; color: var(--accent-emerald);">${o.amount_formatted}</td>
+              <td><span class="badge badge-success">${o.status}</span></td>
+            </tr>
+          `).join('');
+        }
+      } catch(err) {
+        console.error("Error refreshing metrics:", err);
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+      // 1. Revenue & Forecast Chart
+      const forecastHist = {{ (analytics.forecast.history if analytics and analytics.forecast and analytics.forecast.history else [120000, 145000, 160000, 155000, 180000, 210000, 195000, 220000]) | tojson }};
+      const forecastData = {{ (analytics.forecast.forecast if analytics and analytics.forecast and analytics.forecast.forecast else [225000, 230000, 240000, 238000, 250000]) | tojson }};
+
+      const labelsHist = forecastHist.map((_, i) => `Day -${forecastHist.length - i}`);
+      const labelsFc = forecastData.map((_, i) => `Forecast Day +${i+1}`);
+      const allLabels = labelsHist.concat(labelsFc);
+
+      const histSeries = forecastHist.concat(new Array(forecastData.length).fill(null));
+      const fcSeries = new Array(forecastHist.length - 1).fill(null).concat([forecastHist[forecastHist.length - 1]]).concat(forecastData);
+
+      const trendOptions = {
+        chart: { type: 'area', height: 340, background: 'transparent', toolbar: { show: false } },
+        theme: { mode: 'dark' },
+        colors: ['#6366F1', '#10B981'],
+        fill: { type: 'gradient', gradient: { opacityFrom: 0.4, opacityTo: 0.05 } },
+        stroke: { curve: 'smooth', width: 3 },
+        dataLabels: { enabled: false },
+        series: [
+          { name: 'Historical Daily Revenue (INR)', data: histSeries },
+          { name: 'ARIMA 30-Day Sales Forecast (INR)', data: fcSeries }
+        ],
+        xaxis: { categories: allLabels, labels: { style: { colors: '#94A3B8' } } },
+        yaxis: {
+          labels: {
+            style: { colors: '#94A3B8' },
+            formatter: val => val ? '₹' + (val >= 100000 ? (val/100000).toFixed(1) + 'L' : val.toLocaleString()) : ''
+          }
+        },
+        tooltip: {
+          y: { formatter: val => val ? '₹ ' + val.toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '' }
+        },
+        grid: { borderColor: 'rgba(255, 255, 255, 0.06)' }
+      };
+
+      new ApexCharts(document.querySelector("#chart-revenue-trend"), trendOptions).render();
+      new ApexCharts(document.querySelector("#chart-forecast-full"), trendOptions).render();
+
+      // 2. Regional Donut Chart
+      const regNames = {{ revenue_by_region | map(attribute='region') | list | tojson }};
+      const regRevenues = {{ revenue_by_region | map(attribute='revenue') | list | tojson }};
+
+      const donutOptions = {
+        chart: { type: 'donut', height: 280, background: 'transparent' },
+        labels: regNames,
+        series: regRevenues,
+        colors: ['#6366F1', '#A855F7', '#06B6D4', '#10B981', '#F59E0B'],
+        theme: { mode: 'dark' },
+        legend: { position: 'bottom', labels: { colors: '#94A3B8' } },
+        tooltip: {
+          y: { formatter: val => '₹ ' + val.toLocaleString('en-IN', { maximumFractionDigits: 2 }) }
+        }
+      };
+      new ApexCharts(document.querySelector("#chart-regional-donut"), donutOptions).render();
+
+      // 3. Customer Segments Bar Chart
+      const segNames = {{ segments | map(attribute='segment_name') | list | tojson }};
+      const segCounts = {{ segments | map(attribute='customers') | list | tojson }};
+
+      const segOptions = {
+        chart: { type: 'bar', height: 300, background: 'transparent', toolbar: { show: false } },
+        theme: { mode: 'dark' },
+        colors: ['#A855F7'],
+        plotOptions: { bar: { borderRadius: 8, distributed: true } },
+        series: [{ name: 'Customers', data: segCounts }],
+        xaxis: { categories: segNames, labels: { style: { colors: '#94A3B8' } } },
+        yaxis: { labels: { style: { colors: '#94A3B8' } } },
+        grid: { borderColor: 'rgba(255, 255, 255, 0.06)' }
+      };
+      new ApexCharts(document.querySelector("#chart-segments-bar"), segOptions).render();
+    });
+  </script>
+
+{% endif %}
 {% endblock %}

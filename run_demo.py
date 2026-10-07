@@ -101,13 +101,14 @@ def run_demand_forecasting(df_orders):
         plt.plot(forecast_index, forecast, color='red', label='ARIMA 30-Day Forecast')
         plt.title('Retail Demand Forecasting')
         plt.xlabel('Date')
-        plt.ylabel('Total Revenue ($)')
+        plt.ylabel('Total Revenue (₹ INR)')
         plt.legend()
         
         plot_path = os.path.join("reports", "demo_forecast.png")
         plt.savefig(plot_path)
         print(f"--> Forecasting complete! Projected next 30 days of sales.")
         print(f"--> Beautiful forecast chart saved to: {plot_path}")
+
 
 def run_customer_intelligence(df_orders):
     print("\n[4/4] Running Customer Intelligence (RFM)...")

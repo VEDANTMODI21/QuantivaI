@@ -3,9 +3,13 @@ import numpy as np
 from sklearn.ensemble import IsolationForest
 from sklearn.cluster import DBSCAN
 from sklearn.preprocessing import StandardScaler
-from scipy import stats
-from config import setup_logging
-from utils import get_engine, fetch_data, bulk_insert
+try:
+    from .config import setup_logging
+    from .utils import get_engine, fetch_data, bulk_insert
+except ImportError:
+    from config import setup_logging
+    from utils import get_engine, fetch_data, bulk_insert
+
 
 logger = setup_logging("FraudDetection")
 

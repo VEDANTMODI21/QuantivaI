@@ -1,11 +1,20 @@
-import time
-import schedule
+try:
+    import schedule
+except ImportError:
+    schedule = None
+
 import random
 from faker import Faker
 import pandas as pd
 from datetime import datetime
-from config import setup_logging, SIMULATION_INTERVAL, FRAUD_RATE, test_db_connection, is_sqlite
-from utils import get_engine, fetch_data, bulk_insert, execute_query, refresh_materialized_views
+
+try:
+    from .config import setup_logging, SIMULATION_INTERVAL, FRAUD_RATE, test_db_connection, is_sqlite
+    from .utils import get_engine, fetch_data, bulk_insert, execute_query, refresh_materialized_views
+except ImportError:
+    from config import setup_logging, SIMULATION_INTERVAL, FRAUD_RATE, test_db_connection, is_sqlite
+    from utils import get_engine, fetch_data, bulk_insert, execute_query, refresh_materialized_views
+
 
 logger = setup_logging("LiveSimulator")
 fake = Faker()
@@ -39,74 +48,72 @@ class LiveSimulator:
             
             # 2. Orders & Payments
             orders = []
-            num_orders = random.randint(1, 4)
+            order_items_list = []
+            payments = []
+            num_orders = random.randint(1, 3)
+
             for _ in range(num_orders):
-                orders.append({
-                    "customer_id": random.choice(self.cust_ids),
-                    "order_date": datetime.now(),
-                    "status": "Completed",
-                    "total_amount": 0,
-                    "shipping_address": fake.address().replace('\n', ', '),
-                    "region": random.choice(["North", "South", "East", "West"])
-                })
-            
-            if orders:
-                df_orders = pd.DataFrame(orders)
-                engine = get_engine()
-                with engine.begin() as conn:
-                    df_orders.to_sql('orders', conn, if_exists='append', index=False, method='multi')
-                
-                recent_order_ids = fetch_data(f"SELECT order_id FROM orders ORDER BY order_id DESC LIMIT {num_orders}")['order_id'].tolist()
-                
-                items = []
-                payments = []
-                for oid in recent_order_ids:
-                    # Is Fraud?
-                    is_fraud = random.random() < FRAUD_RATE
-                    
-                    num_items = random.randint(1, 3)
-                    order_total = 0
-                    for _ in range(num_items):
-                        p = self.prod_df.sample(1).iloc[0]
-                        # If fraud, maybe order a massive quantity
-                        qty = random.randint(50, 100) if is_fraud else random.randint(1, 3)
-                        item = {
-                            "order_id": oid,
-                            "product_id": int(p['product_id']),
-                            "quantity": qty,
-                            "unit_price": float(p['price']),
-                            "discount": 0.0
-                        }
-                        if is_sqlite():
-                            item["line_total"] = qty * float(p['price'])
-                        items.append(item)
-                        order_total += qty * float(p['price'])
-                        
-                    payments.append({
-                        "order_id": oid,
-                        "payment_method": "Credit Card" if is_fraud else random.choice(["Credit Card", "UPI", "Wallet"]),
-                        "amount": float(order_total),
-                        "payment_date": datetime.now(),
-                        "status": "Completed",
-                        "transaction_ref": fake.uuid4()
+                cid = random.choice(self.cust_ids)
+                is_fraud = random.random() < FRAUD_RATE
+                num_items = random.randint(1, 3)
+                order_total = 0.0
+
+                # Pre-calculate line items & total amount
+                temp_items = []
+                for _ in range(num_items):
+                    p = self.prod_df.sample(1).iloc[0]
+                    qty = random.randint(50, 100) if is_fraud else random.randint(1, 3)
+                    unit_price = float(p['price'])
+                    line_tot = qty * unit_price
+                    order_total += line_tot
+                    temp_items.append({
+                        "product_id": int(p['product_id']),
+                        "quantity": qty,
+                        "unit_price": unit_price,
+                        "discount": 0.0,
+                        "line_total": line_tot
                     })
 
-                items_df = pd.DataFrame(items)
-                if is_sqlite() and not items_df.empty:
-                    items_df['line_total'] = items_df['quantity'] * items_df['unit_price'] - items_df['discount']
+                orders.append({
+                    "customer_id": cid,
+                    "order_date": datetime.now(),
+                    "status": "Completed",
+                    "total_amount": round(order_total, 2),
+                    "shipping_address": fake.address().replace('\n', ', '),
+                    "region": random.choice(["North", "South", "East", "West"]),
+                    "_items": temp_items,
+                    "_is_fraud": is_fraud
+                })
 
-                bulk_insert(items_df, "order_items")
-                bulk_insert(pd.DataFrame(payments), "payments")
-                execute_query(
-                    """
-                    UPDATE orders
-                    SET total_amount = (
-                        SELECT COALESCE(SUM(quantity * unit_price - discount), 0)
-                        FROM order_items oi
-                        WHERE oi.order_id = orders.order_id
-                    )
-                    """
-                )
+            if orders:
+                df_orders = pd.DataFrame([{k: v for k, v in o.items() if not k.startswith('_')} for o in orders])
+                try:
+                    engine = get_engine()
+                    with engine.begin() as conn:
+                        df_orders.to_sql('orders', conn, if_exists='append', index=False, method='multi')
+                    recent_order_ids = fetch_data(f"SELECT order_id FROM orders ORDER BY order_id DESC LIMIT {num_orders}")['order_id'].tolist()
+                    
+                    for idx, oid in enumerate(reversed(recent_order_ids)):
+                        if idx < len(orders):
+                            ord_info = orders[idx]
+                            for it in ord_info['_items']:
+                                it['order_id'] = oid
+                                order_items_list.append(it)
+                            payments.append({
+                                "order_id": oid,
+                                "payment_method": "Credit Card" if ord_info['_is_fraud'] else random.choice(["Credit Card", "UPI", "Wallet"]),
+                                "amount": ord_info['total_amount'],
+                                "payment_date": datetime.now(),
+                                "status": "Completed",
+                                "transaction_ref": fake.uuid4()
+                            })
+                    if order_items_list:
+                        bulk_insert(pd.DataFrame(order_items_list), "order_items")
+                    if payments:
+                        bulk_insert(pd.DataFrame(payments), "payments")
+                except Exception as exc:
+                    logger.warning(f"Live simulation DB write skipped (read-only mode active): {exc}")
+
                 if not is_sqlite():
                     refresh_materialized_views()
                     logger.info("Power BI materialized views refreshed after live simulation cycle.")

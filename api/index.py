@@ -1,20 +1,9 @@
-import traceback
-from flask import Flask
+import os
+import sys
 
-try:
-    from importlib import import_module
+# Ensure root workspace directory is in sys.path
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
 
-    app = import_module("python.web_dashboard").app
-
-except Exception:
-
-    app = Flask(__name__)
-
-    @app.route('/', defaults={'path': ''})
-    @app.route('/<path:path>')
-    def catch_all(path):
-
-        return f"""
-        <h2>Vercel Import Error</h2>
-        <pre>{traceback.format_exc()}</pre>
-        """, 500
+from python.web_dashboard import app

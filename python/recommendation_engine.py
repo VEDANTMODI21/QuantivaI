@@ -1,9 +1,13 @@
 import pandas as pd
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
-from scipy.sparse import csr_matrix
-from config import setup_logging
-from utils import fetch_data
+try:
+    from .config import setup_logging
+    from .utils import fetch_data
+except ImportError:
+    from config import setup_logging
+    from utils import fetch_data
+
 
 logger = setup_logging("RecommendationEngine")
 

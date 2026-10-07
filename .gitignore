@@ -106,3 +106,4 @@ node_modules/
 package-lock.json
 poetry.lock
 .vercel
+.env*

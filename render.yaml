@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: quantival
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn python.web_dashboard:app --workers 1 --timeout 120 --bind 0.0.0.0:$PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.3
+      - key: DB_DRIVER
+        value: sqlite
+      - key: RUN_SIMULATOR
+        value: "1"
+      - key: INR_RATE
+        value: "1"

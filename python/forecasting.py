@@ -4,10 +4,14 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from statsmodels.tsa.arima.model import ARIMA
 from sklearn.linear_model import LinearRegression
-from sklearn.metrics import mean_absolute_error, mean_squared_error
-from config import setup_logging
-from utils import fetch_data
+try:
+    from .config import setup_logging
+    from .utils import fetch_data
+except ImportError:
+    from config import setup_logging
+    from utils import fetch_data
 import os
+
 
 logger = setup_logging("ForecastingEngine")
 

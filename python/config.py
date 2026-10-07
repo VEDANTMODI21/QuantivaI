@@ -13,26 +13,46 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Database Configuration
 DB_DRIVER = os.getenv("DB_DRIVER", "sqlite").lower()
 
+import shutil
+
 SQLITE_DB_FULL_PATH = BASE_DIR / "quantivaiq.db"
 
+def locate_sqlite_db():
+    candidates = [
+        BASE_DIR / "quantivaiq.db",
+        Path("/var/task/quantivaiq.db"),
+        Path(os.getcwd()) / "quantivaiq.db",
+        Path("/tmp/quantivaiq.db")
+    ]
+    for c in candidates:
+        if c.exists() and c.stat().st_size > 0:
+            return c
+    return BASE_DIR / "quantivaiq.db"
+
 if DB_DRIVER == "sqlite":
-
+    source_db = locate_sqlite_db()
     if os.getenv("VERCEL"):
-        # Vercel requires SQLite in read-only URI mode
-        db_path = SQLITE_DB_FULL_PATH.as_posix()
-
-        if not db_path.startswith("/"):
-            db_path = "/" + db_path
-
-        DATABASE_URL = (
-            f"sqlite:///file://{db_path}?mode=ro&uri=true"
-        )
-
+        tmp_db = Path("/tmp/quantivaiq.db")
+        if source_db.exists() and source_db != tmp_db:
+            try:
+                if not tmp_db.exists() or tmp_db.stat().st_size < source_db.stat().st_size:
+                    shutil.copy2(source_db, tmp_db)
+                target_db = tmp_db
+            except Exception:
+                target_db = source_db
+        elif tmp_db.exists() and tmp_db.stat().st_size > 0:
+            target_db = tmp_db
+        else:
+            target_db = source_db
+        p = target_db.as_posix()
+        DATABASE_URL = f"sqlite:///{p}"
     else:
-        DATABASE_URL = f"sqlite:///{SQLITE_DB_FULL_PATH}"
-
+        p = source_db.as_posix()
+        DATABASE_URL = f"sqlite:///{p}"
 else:
     DATABASE_URL = os.getenv("DATABASE_URL")
+
+
 
 
 # Logging Configuration
@@ -91,3 +111,4 @@ FRAUD_RATE = float(
 )
 def is_sqlite():
     return DB_DRIVER == "sqlite"
+SIMULATION_INTERVAL = int(os.getenv("SIMULATION_INTERVAL_SECONDS", 5))

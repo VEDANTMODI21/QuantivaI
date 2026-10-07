@@ -3,9 +3,13 @@ import numpy as np
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, mean_absolute_error
-from config import setup_logging
-from utils import get_engine, fetch_data, bulk_insert, execute_query
+try:
+    from .config import setup_logging
+    from .utils import get_engine, fetch_data, bulk_insert, execute_query
+except ImportError:
+    from config import setup_logging
+    from utils import get_engine, fetch_data, bulk_insert, execute_query
+
 
 logger = setup_logging("CustomerIntelligence")
 
