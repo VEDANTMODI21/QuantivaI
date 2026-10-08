@@ -1,4 +1,4 @@
-# QuantivaIQ — Enterprise Retail Analytics & Machine Learning Platform
+# QuantivaIQ — Retail Analytics & Machine Learning Platform
 
 An end-to-end analytics and machine learning platform built on authentic transaction datasets from the **UCI Machine Learning Repository (Online Retail II)**. The platform ingests real-world UK e-commerce transactions, loads them into an optimized SQL warehouse (`quantivaiq.db`), executes scikit-learn & statsmodels ML pipelines for **Customer RFM Segmentation, Churn & CLTV Modeling, Autoregressive Demand Forecasting, Unsupervised Anomaly Scoring, and Collaborative Recommendations**, and serves the insights through an interactive web dashboard and Power BI report feeds.
 
@@ -14,7 +14,7 @@ All core figures reflect authentic transaction data loaded directly into the rel
 | Metric | Authentic Value | Context / Source |
 |---|---|---|
 | **Total Cumulative Revenue** | **£20,972,627.24** (~£20.97M) | Authentic completed order values in **British Pounds (`£` GBP)** |
-| **Total Registered Invoices** | **48,369** transactions | Authentic unique transaction identifiers (40,077 Completed, 8,292 Cancelled: 82.9% completion rate) |
+| **Total Invoices** | **48,369** transactions | Authentic unique transaction identifiers (40,077 Completed, 8,292 Cancelled: 82.9% completion rate) |
 | **Active Retail Accounts** | **5,940** accounts | 5,939 registered client profiles across 40+ countries + 1 guest placeholder account (#99999) |
 | **Average Order Value (AOV)**| **£433.57** | Mean completed order basket size (£20.97M ÷ 48,369 total invoices = £433.59) |
 | **Catalog Breadth** | **4,932** unique products | Authentic catalog SKUs (e.g., *Regency Cakestand 3 Tier*, *White Hanging Heart T-Light Holder*) |
@@ -86,7 +86,7 @@ The platform processes authentic transactions from the **UCI Online Retail II** 
 |          Flask / Vercel Web Engine       |
 | • RESTful API Endpoints (/api/metrics)   |
 | • Glassmorphic Dark UI (index.html)      |
-| • Real-time Transaction Simulator Stream |
+| • Simulated Order Demo Stream (10s poll) |
 +------------------------------------------+
 ```
 
@@ -125,7 +125,7 @@ QuantivaI/
 │   ├── forecasting.py              # ARIMA & Linear Regression sales forecasting
 │   ├── fraud_detection.py          # Isolation Forest, DBSCAN & Z-score ensemble
 │   ├── recommendation_engine.py    # Sparse matrix collaborative filtering
-│   ├── live_data_generator.py      # Real-time streaming transaction simulator
+│   ├── live_data_generator.py      # Simulated demo order generator
 │   ├── export_powerbi_csv.py       # Power BI CSV exporter
 │   ├── utils.py                    # Shared database helper functions
 │   └── web_dashboard.py            # Core Flask Web Application server
