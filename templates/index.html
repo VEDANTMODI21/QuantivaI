@@ -224,6 +224,33 @@
               {% endfor %}
             </tbody>
           </table>
+          <div style="padding: 12px 16px; font-size: 0.78rem; color: var(--text-muted); border-top: 1px solid var(--border-color); background: rgba(0,0,0,0.15);">
+            💡 <strong>Segment Account Note:</strong> 5,939 registered retail customer profiles segmented across 5 tiers (including 61 return-only accounts with £0.00 net completed spend) + 1 anonymous guest checkout placeholder account (<code>#99999</code>) = 5,940 total database customer IDs.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ML Customer Models: Churn & CLTV Metrics -->
+    <div class="kpi-grid" style="margin-top: 20px;">
+      <div class="card stat-card" style="border-top: 3px solid var(--accent-purple);">
+        <div class="stat-header">
+          <span class="stat-title">CHURN PREDICTION (RANDOM FOREST)</span>
+        </div>
+        <div class="stat-value">62.0% Acc</div>
+        <div class="stat-subtext" style="color: var(--text-muted); font-size: 0.78rem; margin-top: 6px;">
+          <span style="color: var(--accent-emerald); font-weight: 600;">+11.9% lift</span> over 50.1% majority baseline<br>
+          Precision: 0.61 · Recall: 0.66 · F1-Score: 0.63
+        </div>
+      </div>
+      <div class="card stat-card" style="border-top: 3px solid var(--accent-emerald);">
+        <div class="stat-header">
+          <span class="stat-title">CLTV PREDICTION (RANDOM FOREST)</span>
+        </div>
+        <div class="stat-value">£300.70 MAE</div>
+        <div class="stat-subtext" style="color: var(--text-muted); font-size: 0.78rem; margin-top: 6px;">
+          <span style="color: var(--accent-emerald); font-weight: 600;">9.7% relative error</span> on £3,018.62 mean CLTV<br>
+          Median Customer CLTV: £898.92
         </div>
       </div>
     </div>
@@ -231,6 +258,30 @@
 
   <!-- TAB 4: ARIMA DEMAND FORECASTING -->
   <div id="tab-forecasting" class="tab-panel">
+    <div class="kpi-grid" style="margin-bottom: 20px;">
+      <div class="card stat-card" style="border-top: 3px solid var(--accent-cyan);">
+        <div class="stat-header">
+          <span class="stat-title">LINEAR REGRESSION (LAG-1, LAG-7, DOW)</span>
+          <span class="badge badge-success">Top Performer</span>
+        </div>
+        <div class="stat-value">£20,648.85 MAE</div>
+        <div class="stat-subtext" style="color: var(--text-muted); font-size: 0.78rem; margin-top: 6px;">
+          <span style="color: var(--accent-emerald); font-weight: 600;">36.6% relative error</span> on £56.5k/day Q4 test volume<br>
+          Captures weekly warehouse closure cycles
+        </div>
+      </div>
+      <div class="card stat-card" style="border-top: 3px solid var(--accent-purple);">
+        <div class="stat-header">
+          <span class="stat-title">ARIMA(5,1,0) BENCHMARK</span>
+        </div>
+        <div class="stat-value">£23,158.23 MAE</div>
+        <div class="stat-subtext" style="color: var(--text-muted); font-size: 0.78rem; margin-top: 6px;">
+          <span style="color: var(--accent-amber); font-weight: 600;">41.0% relative error</span> on £56.5k/day Q4 test volume<br>
+          Univariate model; struggles with 0-sales weekend drops
+        </div>
+      </div>
+    </div>
+
     <div class="section-grid">
       <div class="card full-width">
         <div class="card-header">
@@ -238,9 +289,12 @@
             <svg style="width:20px;height:20px;fill:var(--accent-cyan)" viewBox="0 0 24 24"><path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/></svg>
             ARIMA Time Series 30-Day Projected Demand (in GBP £)
           </h3>
-          <span class="badge badge-success">Confidence Level: 95%</span>
+          <span class="badge badge-purple">Q4 Holiday Peak Test Window</span>
         </div>
         <div id="chart-forecast-full" style="min-height: 360px;"></div>
+        <div style="padding: 12px 16px; font-size: 0.78rem; color: var(--text-muted); border-top: 1px solid var(--border-color); background: rgba(0,0,0,0.15);">
+          ℹ️ <strong>Retail Volatility Context:</strong> Nov–Dec sales surge ~2x to £56.5k/day mean (£200.9k max, £0 weekends). Feature-engineered autoregression (lag-1, lag-7, day-of-week) cuts MAE to £20.6k by capturing weekly retail operational rhythms that vanilla ARIMA cannot.
+        </div>
       </div>
     </div>
   </div>

@@ -74,7 +74,9 @@ class ForecastingEngine:
         # For simplicity, let's just evaluate on test set
         preds = model.predict(X_test)
         mae = mean_absolute_error(y_test, preds)
-        logger.info(f"Linear Regression MAE on test set: {mae:.2f}")
+        test_mean = y_test.mean()
+        err_pct = (mae / test_mean) * 100 if test_mean > 0 else 0
+        logger.info(f"Linear Regression (Lag-1, Lag-7, Day-of-Week) MAE: £{mae:.2f} (Test Period Mean: £{test_mean:.2f}/day, Relative Error: {err_pct:.1f}%)")
 
     def forecast_arima(self, df, forecast_days=30):
         logger.info("Training ARIMA Model...")
@@ -84,6 +86,7 @@ class ForecastingEngine:
             
         train = df['y'][:-forecast_days]
         test = df['y'][-forecast_days:]
+        test_mean = test.mean()
         
         # Auto-regressive Integrated Moving Average (p, d, q)
         # We use a simple (5,1,0) configuration for demonstration
@@ -95,7 +98,8 @@ class ForecastingEngine:
             forecast = model_fit.forecast(steps=forecast_days)
             
             mae = mean_absolute_error(test, forecast)
-            logger.info(f"ARIMA MAE on test set: {mae:.2f}")
+            err_pct = (mae / test_mean) * 100 if test_mean > 0 else 0
+            logger.info(f"ARIMA(5,1,0) MAE: £{mae:.2f} (Test Period Mean: £{test_mean:.2f}/day, Relative Error: {err_pct:.1f}%)")
             
             # Plot
             plt.figure(figsize=(12, 6))

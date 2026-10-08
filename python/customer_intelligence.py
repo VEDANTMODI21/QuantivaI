@@ -3,7 +3,7 @@ import numpy as np
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, mean_absolute_error
+from sklearn.metrics import accuracy_score, mean_absolute_error, precision_score, recall_score, f1_score
 try:
     from .config import setup_logging
     from .utils import get_engine, fetch_data, bulk_insert, execute_query
@@ -58,21 +58,21 @@ class CustomerIntelligence:
 
         segments_to_insert = rfm_df[['customer_id', 'segment_name', 'rfm_score', 'recency', 'frequency', 'monetary']].copy()
 
-        # Include registered accounts with zero completed orders (only cancelled/returns) as Inactive
+        # Include registered accounts with zero completed orders (only cancelled/returns) as Return-only Accounts
         canc_only = fetch_data(
             "SELECT customer_id FROM customers WHERE customer_id != 99999 "
             "AND customer_id NOT IN (SELECT DISTINCT customer_id FROM orders WHERE status = 'Completed')"
         )
         if not canc_only.empty:
-            inactive_rows = pd.DataFrame({
+            return_only_rows = pd.DataFrame({
                 'customer_id': canc_only['customer_id'],
-                'segment_name': 'Inactive Customers',
+                'segment_name': 'Return-only Accounts',
                 'rfm_score': '111',
                 'recency': 730,
                 'frequency': 0,
                 'monetary': 0.0
             })
-            segments_to_insert = pd.concat([segments_to_insert, inactive_rows], ignore_index=True)
+            segments_to_insert = pd.concat([segments_to_insert, return_only_rows], ignore_index=True)
 
         # Clear and Insert
         execute_query("DELETE FROM customer_segments")
@@ -114,7 +114,11 @@ class CustomerIntelligence:
         
         preds = model.predict(X_test)
         acc = accuracy_score(y_test, preds)
-        logger.info(f"Churn Model Accuracy: {acc:.2f}")
+        prec = precision_score(y_test, preds, zero_division=0)
+        rec = recall_score(y_test, preds, zero_division=0)
+        f1 = f1_score(y_test, preds, zero_division=0)
+        majority_baseline = max(y_test.mean(), 1 - y_test.mean())
+        logger.info(f"Churn Model - Accuracy: {acc:.2f} (Majority Baseline: {majority_baseline:.2f}), Precision: {prec:.2f}, Recall: {rec:.2f}, F1: {f1:.2f}")
 
     def predict_cltv(self):
         logger.info("Training CLTV Prediction Model...")
@@ -148,7 +152,9 @@ class CustomerIntelligence:
         
         preds = model.predict(X_test)
         mae = mean_absolute_error(y_test, preds)
-        logger.info(f"CLTV Model MAE: £{mae:.2f}")
+        mean_cltv = y_test.mean()
+        err_pct = (mae / mean_cltv) * 100 if mean_cltv > 0 else 0
+        logger.info(f"CLTV Model MAE: £{mae:.2f} (Mean Test CLTV: £{mean_cltv:.2f}, Relative Error: {err_pct:.1f}%)")
 
 if __name__ == "__main__":
     ci = CustomerIntelligence()

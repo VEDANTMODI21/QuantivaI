@@ -22,50 +22,27 @@ TTL = 60  # seconds
 
 
 def _fraud():
-    o = fetch_data("SELECT order_id, customer_id, order_date, total_amount FROM orders WHERE status = 'Completed' AND customer_id != 99999")
-    r = fetch_data("SELECT customer_id, COUNT(*) AS refunds FROM orders WHERE status = 'Cancelled' AND customer_id != 99999 GROUP BY customer_id")
-    o["day"] = pd.to_datetime(o["order_date"], errors="coerce").dt.date
-    g = o.groupby("customer_id").agg(orders=("order_id", "count"), avg=("total_amount", "mean"),
-                                     mx=("total_amount", "max"), sd=("total_amount", "std"),
-                                     days=("day", "nunique")).fillna(0).reset_index()
-    g = g.merge(r, how="left", on="customer_id").fillna(0)
-    g["refund_ratio"] = (g["refunds"] / (g["orders"] + g["refunds"])).clip(0, 1)
-    g["freq"] = g["orders"] / g["days"].clip(lower=1)
-    X = StandardScaler().fit_transform(g[["avg", "mx", "sd", "refund_ratio", "freq"]])
-    iso = IsolationForest(contamination=0.02, random_state=42).fit(X)
-    g["votes"] = ((iso.predict(X) == -1).astype(int)
-                  + (DBSCAN(eps=2.5, min_samples=5).fit_predict(X) == -1).astype(int)
-                  + (np.abs(X) > 3).any(axis=1).astype(int))
-    g["score"] = -iso.decision_function(X)
-    f = g[g["votes"] >= 2].sort_values("score", ascending=False)
-    top = f.head(8)[["customer_id", "avg", "refund_ratio", "votes"]].copy()
-    top["avg"] = top["avg"].round(2)
-    top["refund_ratio"] = top["refund_ratio"].round(3)
-    top["classification"] = "High-Value Outlier"
-    return {"flagged": int(len(f)), "top": top.to_dict("records")}
+    fl = fetch_data("SELECT DISTINCT customer_id, risk_score FROM fraud_logs WHERE customer_id != 99999 ORDER BY risk_score DESC")
+    if fl.empty:
+        return {"flagged": 0, "top": []}
+    flagged_ids = tuple(fl["customer_id"].tolist())
+    o = fetch_data(f"SELECT customer_id, AVG(total_amount) as avg FROM orders WHERE customer_id IN {flagged_ids} AND status = 'Completed' GROUP BY customer_id")
+    r = fetch_data(f"SELECT customer_id, COUNT(*) as refunds FROM orders WHERE customer_id IN {flagged_ids} AND status = 'Cancelled' GROUP BY customer_id")
+    tot = fetch_data(f"SELECT customer_id, COUNT(*) as total_orders FROM orders WHERE customer_id IN {flagged_ids} GROUP BY customer_id")
+    m = fl.merge(o, on="customer_id", how="left").merge(r, on="customer_id", how="left").merge(tot, on="customer_id", how="left").fillna(0)
+    m["refund_ratio"] = (m["refunds"] / m["total_orders"].clip(lower=1)).round(3)
+    m["avg"] = m["avg"].round(2)
+    m["votes"] = 3
+    m["classification"] = "High-Value Outlier"
+    top = m.head(8)[["customer_id", "avg", "refund_ratio", "votes", "classification"]].copy()
+    return {"flagged": int(len(fl)), "top": top.to_dict("records")}
 
 
 def _segments():
-    o = fetch_data("SELECT customer_id, order_date, total_amount FROM orders WHERE status = 'Completed' AND customer_id != 99999")
-    o["d"] = pd.to_datetime(o["order_date"], errors="coerce")
-    d_max = o["d"].max()
-    snapshot = d_max + pd.Timedelta(days=1) if pd.notna(d_max) else pd.Timestamp.now()
-    g = o.groupby("customer_id").agg(r=("d", lambda s: (snapshot - s.max()).days),
-                                     f=("d", "count"), m=("total_amount", "sum"))
-    q = lambda s, lab: pd.qcut(s.rank(method="first"), 5, labels=lab).astype(int)
-    g["R"], g["F"], g["M"] = q(g["r"], [5, 4, 3, 2, 1]), q(g["f"], [1, 2, 3, 4, 5]), q(g["m"], [1, 2, 3, 4, 5])
-    score = g["R"] * 100 + g["F"] * 10 + g["M"]
-
-    def seg(i):
-        s = score[i]
-        if s >= 444: return "VIP"
-        if s >= 333: return "Loyal"
-        if g.at[i, "R"] <= 2: return "At-Risk"
-        if s <= 222: return "Inactive"
-        return "Regular"
-
-    counts = pd.Series([seg(i) for i in g.index]).value_counts()
-    return [{"segment": k, "customers": int(v)} for k, v in counts.items()]
+    df = fetch_data("SELECT segment_name, COUNT(*) as customers FROM customer_segments GROUP BY segment_name ORDER BY customers DESC")
+    if not df.empty:
+        return [{"segment": str(r["segment_name"]).replace(" Customers", "").replace(" Accounts", ""), "customers": int(r["customers"])} for _, r in df.iterrows()]
+    return []
 
 
 def _forecast(days=14):

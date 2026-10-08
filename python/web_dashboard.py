@@ -155,7 +155,7 @@ def fetch_dashboard_metrics():
             'total_revenue_formatted': "£20.97M",
             'avg_order_value': 433.58,
             'avg_order_value_formatted': "£433.58",
-            'fraud_cases': 56,
+            'fraud_cases': 55,
             'currency': 'GBP',
             'currency_symbol': '£',
             'top_products': [],
