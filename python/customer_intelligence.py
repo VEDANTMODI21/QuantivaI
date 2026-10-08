@@ -35,8 +35,9 @@ class CustomerIntelligence:
             logger.warning("No order data available for RFM.")
             return
 
-        rfm_df['last_order_date'] = pd.to_datetime(rfm_df['last_order_date'], errors='coerce').fillna(pd.Timestamp.now() - pd.Timedelta(days=999))
-        rfm_df['recency'] = (pd.Timestamp.now() - rfm_df['last_order_date']).dt.days.clip(lower=0)
+        rfm_df['parsed_date'] = pd.to_datetime(rfm_df['last_order_date'], errors='coerce')
+        snapshot_date = rfm_df['parsed_date'].max() + pd.Timedelta(days=1) if rfm_df['parsed_date'].notna().any() else pd.Timestamp.now()
+        rfm_df['recency'] = (snapshot_date - rfm_df['parsed_date'].fillna(snapshot_date - pd.Timedelta(days=999))).dt.days.clip(lower=0)
 
         # Calculate quantiles
         rfm_df['R_Quartile'] = pd.qcut(rfm_df['recency'].rank(method='first'), 5, labels=[5, 4, 3, 2, 1]).astype(int)
@@ -80,8 +81,9 @@ class CustomerIntelligence:
             logger.warning("Not enough data to train churn model.")
             return
             
-        last_dt = pd.to_datetime(df['last_order_date'], errors='coerce').fillna(pd.Timestamp.now() - pd.Timedelta(days=999))
-        days_since = (pd.Timestamp.now() - last_dt).dt.days
+        last_dt = pd.to_datetime(df['last_order_date'], errors='coerce')
+        snapshot_date = last_dt.max() + pd.Timedelta(days=1) if last_dt.notna().any() else pd.Timestamp.now()
+        days_since = (snapshot_date - last_dt.fillna(snapshot_date - pd.Timedelta(days=999))).dt.days
         df['is_churned'] = (days_since > 90).astype(int)
         
         features = ['total_orders', 'total_spend', 'avg_order_value']

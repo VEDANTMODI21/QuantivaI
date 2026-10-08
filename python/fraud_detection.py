@@ -59,7 +59,7 @@ class FraudDetector:
             return
 
         features = ['avg_order_amount', 'max_order_amount', 'amount_stddev', 'refund_ratio', 'order_frequency']
-        X = df[features]
+        X = df[features].astype(float)
         
         scaler = StandardScaler()
         X_scaled = scaler.fit_transform(X)
@@ -75,7 +75,9 @@ class FraudDetector:
         df['dbscan_outlier'] = np.where(df['dbscan_cluster'] == -1, -1, 1)
 
         logger.info("Running Z-Score Anomaly Detection...")
-        z_scores = np.abs(stats.zscore(X))
+        mean_vals = X.mean()
+        std_vals = X.std().replace(0, 1)
+        z_scores = np.abs((X - mean_vals) / std_vals)
         df['zscore_outlier'] = np.where((z_scores > 3).any(axis=1), -1, 1)
 
         # Ensemble Voting: If 2 or more models flag as -1 (anomaly), then fraud

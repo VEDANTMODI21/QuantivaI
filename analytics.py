@@ -46,7 +46,9 @@ def _fraud():
 def _segments():
     o = fetch_data("SELECT customer_id, order_date, total_amount FROM orders WHERE status = 'Completed'")
     o["d"] = pd.to_datetime(o["order_date"], errors="coerce")
-    g = o.groupby("customer_id").agg(r=("d", lambda s: (pd.Timestamp.now() - s.max()).days),
+    d_max = o["d"].max()
+    snapshot = d_max + pd.Timedelta(days=1) if pd.notna(d_max) else pd.Timestamp.now()
+    g = o.groupby("customer_id").agg(r=("d", lambda s: (snapshot - s.max()).days),
                                      f=("d", "count"), m=("total_amount", "sum"))
     q = lambda s, lab: pd.qcut(s.rank(method="first"), 5, labels=lab).astype(int)
     g["R"], g["F"], g["M"] = q(g["r"], [5, 4, 3, 2, 1]), q(g["f"], [1, 2, 3, 4, 5]), q(g["m"], [1, 2, 3, 4, 5])
@@ -79,17 +81,54 @@ def _forecast(days=14):
 
 
 def _recs(n_users=5):
+    from scipy.sparse import csr_matrix
     d = fetch_data("SELECT o.customer_id, oi.product_id, SUM(oi.quantity) AS q FROM orders o "
                    "JOIN order_items oi ON o.order_id = oi.order_id WHERE o.status = 'Completed' "
                    "GROUP BY o.customer_id, oi.product_id")
+    if d.empty:
+        return []
     names = fetch_data("SELECT product_id, product_name FROM products").set_index("product_id")["product_name"]
-    m = d.pivot(index="customer_id", columns="product_id", values="q").fillna(0)
-    sim = pd.DataFrame(cosine_similarity(m.values.T), index=m.columns, columns=m.columns)
+    
+    # Filter to top active products and users to keep memory small and fast
+    top_pids = d.groupby("product_id")["q"].sum().nlargest(500).index
+    d_sub = d[d["product_id"].isin(top_pids)].copy()
+    
+    cust_ids = d_sub["customer_id"].unique()
+    prod_ids = top_pids.values
+    cust_map = {cid: idx for idx, cid in enumerate(cust_ids)}
+    prod_map = {pid: idx for idx, pid in enumerate(prod_ids)}
+    
+    row_ind = d_sub["customer_id"].map(cust_map).values
+    col_ind = d_sub["product_id"].map(prod_map).values
+    data = d_sub["q"].values.astype(np.float32)
+    
+    mat = csr_matrix((data, (row_ind, col_ind)), shape=(len(cust_ids), len(prod_ids)))
+    # Compute similarity between top items
+    item_mat = mat.T
+    norms = np.sqrt(item_mat.power(2).sum(axis=1)).A1
+    norms[norms == 0] = 1.0
+    
+    # User recommendations for top active users
+    user_counts = d_sub.groupby("customer_id")["q"].count()
+    top_users = user_counts.nlargest(n_users).index
+    
     out = []
-    for u in (m > 0).sum(axis=1).nlargest(n_users).index:
-        bought = m.columns[m.loc[u] > 0]
-        top = sim[bought].sum(axis=1).drop(bought).nlargest(3).index
-        out.append({"customer_id": int(u), "items": [str(names.get(p, p)) for p in top]})
+    for uid in top_users:
+        if uid not in cust_map:
+            continue
+        u_idx = cust_map[uid]
+        u_vector = mat.getrow(u_idx).toarray().flatten()
+        bought_indices = np.where(u_vector > 0)[0]
+        if len(bought_indices) == 0:
+            continue
+            
+        sub_items = item_mat[bought_indices]
+        scores = sub_items.dot(mat).toarray().sum(axis=0)
+        scores[bought_indices] = -1.0 # exclude already bought
+        
+        top_rec_indices = np.argsort(scores)[-3:][::-1]
+        rec_names = [str(names.get(prod_ids[i], f"Product {prod_ids[i]}")) for i in top_rec_indices if scores[i] > 0]
+        out.append({"customer_id": int(uid), "items": rec_names})
     return out
 
 

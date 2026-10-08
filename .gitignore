@@ -74,6 +74,7 @@ reports/*.png
 reports/*.pdf
 *.xlsx
 *.xls
+*.zip
 
 # OS specific
 Thumbs.db

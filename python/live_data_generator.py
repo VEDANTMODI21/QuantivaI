@@ -92,7 +92,7 @@ class LiveSimulator:
                 try:
                     engine = get_engine()
                     with engine.begin() as conn:
-                        df_orders.to_sql('orders', conn, if_exists='append', index=False, method='multi')
+                        df_orders.to_sql('orders', conn, if_exists='append', index=False, method=None if is_sqlite() else 'multi')
                     recent_order_ids = fetch_data(f"SELECT order_id FROM orders ORDER BY order_id DESC LIMIT {num_orders}")['order_id'].tolist()
                     
                     for idx, oid in enumerate(reversed(recent_order_ids)):

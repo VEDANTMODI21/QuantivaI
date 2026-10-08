@@ -38,8 +38,10 @@ def bulk_insert(df, table_name, if_exists="append"):
         
     engine = get_engine()
     try:
-        chunk = 100 if is_sqlite() else 1000
-        df.to_sql(table_name, engine, if_exists=if_exists, index=False, method='multi', chunksize=chunk)
+        if is_sqlite():
+            df.to_sql(table_name, engine, if_exists=if_exists, index=False, method=None, chunksize=10000)
+        else:
+            df.to_sql(table_name, engine, if_exists=if_exists, index=False, method='multi', chunksize=1000)
         logger.info(f"Successfully inserted {len(df)} rows into {table_name}.")
     except Exception as e:
         logger.error(f"Error during bulk insert to {table_name}: {e}")

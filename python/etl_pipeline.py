@@ -303,7 +303,23 @@ def run_etl():
         logger.error("Database connection failed. Please ensure PostgreSQL or SQLite is initialized.")
         return
 
-    logger.info("Starting Full ETL Pipeline...")
+    # Check if authentic UCI Online Retail II dataset is present
+    import os
+    dataset_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "datasets", "online_retail_II.xlsx")
+    if os.path.exists(dataset_path):
+        logger.info(f"Authentic UCI dataset detected at {dataset_path}. Ingesting real retail data warehouse...")
+        from etl_real_data import load_and_ingest_real_retail
+        load_and_ingest_real_retail()
+        from customer_intelligence import CustomerIntelligence
+        ci = CustomerIntelligence()
+        ci.update_rfm_segments()
+        generate_fraud_logs()
+        if not is_sqlite():
+            refresh_materialized_views()
+        logger.info("Real Dataset ETL Pipeline execution completed successfully!")
+        return
+
+    logger.info("Starting Standard ETL Pipeline...")
     generate_categories_and_suppliers()
     generate_products(NUM_PRODUCTS)
     generate_customers(NUM_CUSTOMERS)
