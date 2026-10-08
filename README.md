@@ -9,7 +9,7 @@ An end-to-end analytics and machine learning platform built on authentic transac
 
 ## 📊 Live Platform Baseline Metrics (Real Data)
 
-All core figures reflect authentic transaction data loaded directly into the relational warehouse (`quantivaiq.db`) from the UCI Online Retail II dataset:
+All figures are computed from the UCI Online Retail II dataset; no simulated data is used:
 
 | Metric | Authentic Value | Context / Source |
 |---|---|---|
@@ -124,7 +124,6 @@ QuantivaI/
 │   ├── forecasting.py              # ARIMA & Linear Regression sales forecasting
 │   ├── fraud_detection.py          # Isolation Forest, DBSCAN & Z-score ensemble
 │   ├── recommendation_engine.py    # Sparse matrix collaborative filtering
-│   ├── live_data_generator.py      # Simulated demo order generator
 │   ├── export_powerbi_csv.py       # Power BI CSV exporter
 │   ├── utils.py                    # Shared database helper functions
 │   └── web_dashboard.py            # Core Flask Web Application server

@@ -259,27 +259,6 @@ def api_recent_orders():
     return jsonify(metrics.get("recent_orders", []))
 
 
-@app.route('/api/simulator/trigger', methods=['POST'])
-def api_trigger_simulator():
-    """Triggers a single live simulated transaction batch for real-time demonstration."""
-    try:
-        from .live_data_generator import LiveSimulator
-    except ImportError:
-        from live_data_generator import LiveSimulator
-    try:
-        sim = LiveSimulator()
-        sim.simulate_traffic()
-        return jsonify({
-            'status': 'success',
-            'message': 'Simulated new transactions successfully injected into database'
-        })
-    except Exception as exc:
-        logger.error(f"Simulation trigger failed: {exc}")
-        return jsonify({
-            'status': 'error',
-            'message': str(exc)
-        }), 500
-
 
 @app.route('/api/export/csv')
 def api_export_csv():
@@ -320,46 +299,6 @@ def api_export_csv():
         mimetype="text/csv",
         headers={"Content-Disposition": "attachment;filename=quantivaiq_retail_report.csv"}
     )
-
-
-# ---------------------------------------------------------
-# Background Live Simulator Thread for Continuous Streaming
-# ---------------------------------------------------------
-_simulator_started = False
-_simulator_lock = threading.Lock()
-
-def start_background_simulator():
-    global _simulator_started
-    with _simulator_lock:
-        if _simulator_started:
-            return
-        _simulator_started = True
-
-    def _worker():
-        interval = int(os.getenv("SIMULATION_INTERVAL_SECONDS", 6))
-        logger.info(f"Background live simulator daemon started (interval: {interval}s)")
-        time.sleep(2)
-        while True:
-            try:
-                try:
-                    from .live_data_generator import LiveSimulator
-                except ImportError:
-                    from live_data_generator import LiveSimulator
-                sim = LiveSimulator()
-                sim.simulate_traffic()
-            except Exception as e:
-                logger.debug(f"Background simulation daemon step note: {e}")
-            time.sleep(interval)
-
-    t = threading.Thread(target=_worker, daemon=True, name="LiveSimulatorDaemon")
-    t.start()
-
-
-if os.getenv("RUN_SIMULATOR", "0") == "1":
-    try:
-        start_background_simulator()
-    except Exception as e:
-        logger.warning(f"Could not start background simulator: {e}")
 
 
 if __name__ == '__main__':
