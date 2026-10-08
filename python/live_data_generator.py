@@ -23,7 +23,8 @@ fake = Faker('en_GB')
 class LiveSimulator:
     def __init__(self):
         logger.info("Initializing Live Simulator...")
-        self.cust_ids = fetch_data("SELECT customer_id FROM customers")['customer_id'].tolist()
+        all_c = fetch_data("SELECT customer_id FROM customers")['customer_id'].tolist()
+        self.cust_ids = [c for c in all_c if c != 99999]
         self.prod_df = fetch_data("SELECT product_id, price FROM products")
         
         if not self.cust_ids or self.prod_df.empty:
@@ -52,7 +53,7 @@ class LiveSimulator:
             order_items_list = []
             payments = []
             num_orders = random.randint(1, 3)
-            regions = ["London & South East", "Midlands", "North England", "Scotland & Wales", "International Europe"]
+            regions = ["United Kingdom", "Germany", "France", "EIRE", "Netherlands", "Australia", "Spain", "Switzerland"]
 
             for _ in range(num_orders):
                 cid = random.choice(self.cust_ids)
