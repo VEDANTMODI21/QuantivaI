@@ -252,8 +252,8 @@
         </div>
         <div class="stat-value">£300.70 MAE</div>
         <div class="stat-subtext" style="color: var(--text-muted); font-size: 0.78rem; margin-top: 6px;">
-          <span style="color: var(--accent-emerald); font-weight: 600;">9.7% of mean CLTV</span> (£3,018.62)<br>
-          33.4% of £898.92 median customer CLTV
+          <span style="color: var(--accent-emerald); font-weight: 600;">9.7% of test-set mean CLTV</span> (£3,092.39)<br>
+          33.5% of £898.92 median customer CLTV
         </div>
       </div>
     </div>
@@ -296,7 +296,7 @@
         </div>
         <div id="chart-forecast-full" style="min-height: 360px;"></div>
         <div style="padding: 12px 16px; font-size: 0.78rem; color: var(--text-muted); border-top: 1px solid var(--border-color); background: rgba(0,0,0,0.15);">
-          ℹ️ <strong>Retail Volatility Context:</strong> Nov–Dec sales surge ~2x to £56.5k/day mean (£200.9k max). The chart displays active trading days only (excluding Sunday warehouse closures); evaluation metrics are computed across all 30 calendar days (including 4 zero-sales closure days). Feature-engineered autoregression (lag-1, lag-7, day-of-week) cuts MAE to £20.6k by capturing weekly retail operational rhythms that vanilla ARIMA cannot.
+          ℹ️ <strong>Retail Volatility Context:</strong> Nov–Dec sales surge ~2x to £56.5k/day mean (£200.9k max). The chart displays active trading days only (excluding Saturday warehouse closures); evaluation metrics are computed across all 30 calendar days (including 4 zero-sales closure days). Feature-engineered autoregression (lag-1, lag-7, day-of-week) cuts MAE to £20.6k by capturing weekly retail operational rhythms that vanilla ARIMA cannot.
         </div>
       </div>
     </div>

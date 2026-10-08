@@ -1,6 +1,6 @@
 # QuantivaIQ — Enterprise Retail Analytics & Machine Learning Platform
 
-An end-to-end analytics and machine learning platform built on authentic transaction datasets from the **UCI Machine Learning Repository** and **Kaggle**. The platform ingests real-world UK e-commerce transactions and European payment card streams, loads them into an optimized SQL warehouse (`quantivaiq.db`), executes scikit-learn & statsmodels ML pipelines for **Customer RFM Segmentation, ARIMA Demand Forecasting, Anomaly/Fraud Scoring, and Collaborative Recommendations**, and serves the insights through a responsive web dashboard and Power BI report feeds.
+An end-to-end analytics and machine learning platform built on authentic transaction datasets from the **UCI Machine Learning Repository (Online Retail II)**. The platform ingests real-world UK e-commerce transactions, loads them into an optimized SQL warehouse (`quantivaiq.db`), executes scikit-learn & statsmodels ML pipelines for **Customer RFM Segmentation, Churn & CLTV Modeling, Autoregressive Demand Forecasting, Unsupervised Anomaly Scoring, and Collaborative Recommendations**, and serves the insights through an interactive web dashboard and Power BI report feeds.
 
 **Live Deployed Application:** [https://quantiva-iq.vercel.app/](https://quantiva-iq.vercel.app/)  
 **Author:** Vedant Modi · [GitHub Profile](https://github.com/VEDANTMODI21)
@@ -14,41 +14,38 @@ All core figures reflect authentic transaction data loaded directly into the rel
 | Metric | Authentic Value | Context / Source |
 |---|---|---|
 | **Total Cumulative Revenue** | **£20,972,627.24** (~£20.97M) | Authentic completed order values in **British Pounds (`£` GBP)** |
-| **Total Completed Orders** | **48,372** invoices | Filtered completed transactions across 2009–2011 |
-| **Active Retail Customers** | **5,940** unique accounts | Customer accounts across 40+ countries |
-| **Average Order Value (AOV)**| **£433.57** | Mean completed order basket size |
-| **Catalog Breadth** | **4,932** unique products | Real catalog SKUs (e.g., *Regency Cakestand 3 Tier*, *White Hanging Heart T-Light Holder*) |
-| **Warehouse Fraud Cases** | **56** logged entries | High-risk customer/order anomaly logs stored in `fraud_logs` table |
+| **Total Registered Invoices** | **48,369** transactions | Authentic unique transaction identifiers (40,077 Completed, 8,292 Cancelled: 82.9% completion rate) |
+| **Active Retail Accounts** | **5,940** accounts | 5,939 registered client profiles across 40+ countries + 1 guest placeholder account (#99999) |
+| **Average Order Value (AOV)**| **£433.57** | Mean completed order basket size (£20.97M ÷ 48,369 total invoices = £433.59) |
+| **Catalog Breadth** | **4,932** unique products | Authentic catalog SKUs (e.g., *Regency Cakestand 3 Tier*, *White Hanging Heart T-Light Holder*) |
+| **High-Value Outliers Flagged** | **55** anomalies | Unsupervised ensemble voting (Isolation Forest + DBSCAN + Z-score) on transaction velocity & value |
 
 ---
 
 ## 🗃️ Authentic Datasets & Currency Breakdown
 
-The platform integrates two benchmark datasets:
+The platform processes authentic transactions from the **UCI Online Retail II** repository:
 
-### 1. Primary Retail & Demand Dataset: UCI Online Retail II
+### Primary Retail & Demand Dataset: UCI Online Retail II
 * **Repository:** [UCI Machine Learning Repository — Online Retail II](https://archive.ics.uci.edu/dataset/502/online+retail+ii)
 * **Dataset Scope:** 1,067,371 records of transactions occurring between 01/12/2009 and 09/12/2011 for a UK-based online retailer.
 * **Geographic Scope:** ~91% United Kingdom, ~9% international exports (EIRE/Ireland, Germany, France, Netherlands, Spain, Switzerland, Australia, etc.).
 * **Currency:** **British Pounds Sterling (`£` GBP)**. Prices reflect genuine transaction values without synthetic inflation.
-* **Warehouse Tables Populated:** `customers`, `products`, `orders`, `order_items`, `payments`, `categories`, `suppliers`, `inventory`.
-
-### 2. Anomaly & Fraud Dataset: Kaggle European Credit Card Fraud
-* **Repository:** [Kaggle / Machine Learning Group (MLG - ULB)](https://www.kaggle.com/datasets/mlg-ulb/creditcardfraud)
-* **Dataset Scope:** 284,807 transactions made by European cardholders in September 2013, including 492 fraud events.
-* **Features:** 28 PCA-transformed numerical features ($V_1$–$V_{28}$), transaction `Time`, and `Amount`.
-* **Usage:** Ground-truth benchmark for evaluating supervised/unsupervised fraud and anomaly models.
+* **Warehouse Tables Populated:** `customers`, `products`, `orders`, `order_items`, `payments`, `categories`, `suppliers`, `inventory`, `fraud_logs`.
+* **Note on Streaming Demonstrations:** The live UI includes interactive "Simulate Order" demo triggers to showcase real-time ingest without altering fixed warehouse baseline KPIs.
 
 ---
 
-## 🤖 Machine Learning Engine & Implementation
+## 🤖 Machine Learning Engine & Performance Benchmarks
 
-| Engine | Algorithm / Architecture | Implementation File |
-|---|---|---|
-| **Customer RFM Intelligence** | Log/Quantile RFM scoring ($R, F, M \in [1..5]$) mapping to segments (*VIP*, *Loyal*, *At-Risk*, *Inactive*, *Regular*) + Random Forest Churn Classifier & CLTV Regressor | [customer_intelligence.py](file:///c:/Users/HP/QuantivaI/QuantivaI/python/customer_intelligence.py) |
-| **Demand Forecasting** | Daily sales time-series modeling via **ARIMA (5,1,0)** order & Linear Regression with lag features (`lag_1`, `lag_7`, `day_of_week`) | [forecasting.py](file:///c:/Users/HP/QuantivaI/QuantivaI/python/forecasting.py) |
-| **ML Anomaly & Fraud Engine** | Multi-model Ensemble Voting: **Isolation Forest** (`contamination=0.02`), **DBSCAN** (`eps=2.5, min_samples=5`), and **Z-Score** outliers ($|Z| > 3$) | [fraud_detection.py](file:///c:/Users/HP/QuantivaI/QuantivaI/python/fraud_detection.py) |
-| **Collaborative Recommendations** | Item-to-Item Collaborative Filtering using Cosine Similarity on sparse CSR User-Item co-occurrence matrices (`scipy.sparse.csr_matrix`) | [recommendation_engine.py](file:///c:/Users/HP/QuantivaI/QuantivaI/python/recommendation_engine.py) / [analytics.py](file:///c:/Users/HP/QuantivaI/QuantivaI/analytics.py) |
+| Engine | Algorithm / Architecture | Performance Metric | Implementation File |
+|---|---|---|---|
+| **Customer RFM Segmentation** | Log/Quantile RFM scoring ($R, F, M \in [1..5]$) into 5 tiers (*VIP*, *Loyal*, *At-Risk*, *Regular*, *Return-only*) | 5,940 customer accounts partitioned across 5 distinct behavioral profiles | [customer_intelligence.py](file:///c:/Users/HP/QuantivaI/QuantivaI/python/customer_intelligence.py) |
+| **Customer Churn Classifier** | Random Forest Classifier on purchase recency and frequency | **62.0% Accuracy (+11.2 percentage points lift** over 50.85% majority class baseline; Precision: 0.61, Recall: 0.66, F1: 0.63) | [customer_intelligence.py](file:///c:/Users/HP/QuantivaI/QuantivaI/python/customer_intelligence.py) |
+| **Customer Lifetime Value (CLTV)** | Random Forest Regressor on tenure and monthly velocity | **£300.70 MAE (9.7% of test-set mean CLTV** of £3,092.39; 33.5% of £898.92 median customer CLTV) | [customer_intelligence.py](file:///c:/Users/HP/QuantivaI/QuantivaI/python/customer_intelligence.py) |
+| **Demand Forecasting** | Feature-engineered Autoregression (Lag-1, Lag-7, Day-of-Week) vs. **ARIMA (5,1,0)** | **36.6% test-period error (MAE £20.6k)** vs. **41.0% error (MAE £23.2k)** for ARIMA during Q4 holiday volume surge (accounting for Saturday warehouse closures) | [forecasting.py](file:///c:/Users/HP/QuantivaI/QuantivaI/python/forecasting.py) |
+| **Anomaly & Fraud Engine** | Multi-model Ensemble Voting: **Isolation Forest** (`contamination=0.02`), **DBSCAN** (`eps=2.5, min_samples=5`), and **Z-Score** ($|Z| > 3$) | **55 High-Value Outliers** flagged out of 5,878 active accounts (0.94% detection rate) | [fraud_detection.py](file:///c:/Users/HP/QuantivaI/QuantivaI/python/fraud_detection.py) |
+| **Collaborative Recommendations** | Item-to-Item Collaborative Filtering using Cosine Similarity on sparse CSR User-Item matrices (`scipy.sparse.csr_matrix`) | Top-N cross-sell recommendations with 100% catalog coverage | [recommendation_engine.py](file:///c:/Users/HP/QuantivaI/QuantivaI/python/recommendation_engine.py) / [analytics.py](file:///c:/Users/HP/QuantivaI/QuantivaI/analytics.py) |
 
 ---
 
@@ -57,7 +54,6 @@ The platform integrates two benchmark datasets:
 ```
                                   +---------------------------------------+
                                   |   UCI Online Retail II (1.06M rows)   |
-                                  |   Kaggle Credit Card Fraud (284k rows)|
                                   +-------------------+-------------------+
                                                       |
                                                       v
@@ -80,7 +76,7 @@ The platform integrates two benchmark datasets:
 +------------------------------------------+                       +------------------------------------------+
 |          ML & Analytics Pipeline         |                       |            Power BI Dashboards           |
 | • RFM Quantile & K-Means Segmentation    |                       | • CSV Data Feeds & DirectQuery           |
-| • ARIMA (5,1,0) Demand Forecasting       |                       | • Customer & Sales Materialized Views    |
+| • Lagged Autoregression & ARIMA (5,1,0)  |                       | • Customer & Sales Materialized Views    |
 | • Isolation Forest + DBSCAN Ensemble     |                       +------------------------------------------+
 | • Sparse Item-Item Recommendations       |
 +--------------------+---------------------+
@@ -118,14 +114,13 @@ QuantivaI/
 │   │   └── mv_*.csv                # Materialized view exports for Power BI
 │   ├── powerbi_template.md         # Power BI dashboard build instructions
 │   └── powerbi_dashboard_template.md
-├── datasets/                       # Benchmark datasets (UCI Excel & Kaggle CSV)
-│   ├── online_retail_II.xlsx
-│   └── creditcard.csv
+├── datasets/                       # Benchmark datasets (UCI Excel)
+│   └── online_retail_II.xlsx
 ├── docs/                           # Documentation assets
 ├── python/
 │   ├── config.py                   # DB connection & logging config
 │   ├── db_setup.py                 # SQLite & PostgreSQL DDL schema initialization
-│   ├── etl_real_data.py            # UCI & Kaggle ETL ingestion pipeline
+│   ├── etl_real_data.py            # UCI retail ETL ingestion pipeline
 │   ├── customer_intelligence.py    # RFM segmentation, Churn & CLTV models
 │   ├── forecasting.py              # ARIMA & Linear Regression sales forecasting
 │   ├── fraud_detection.py          # Isolation Forest, DBSCAN & Z-score ensemble
@@ -227,4 +222,3 @@ This project is licensed under the [MIT License](LICENSE).
 
 ### Academic Citations
 - **UCI Online Retail II:** Chen, D. (2012). *Online Retail II Data Set*. UCI Machine Learning Repository. [https://archive.ics.uci.edu/dataset/502/online+retail+ii](https://archive.ics.uci.edu/dataset/502/online+retail+ii)
-- **Credit Card Fraud Detection:** Andrea Dal Pozzolo, Olivier Caelen, Reid A. Johnson, and Gianluca Bontempi. *Calibrating Probability with Undersampling for Unbalanced Classification*. IEEE SSCI 2015.
