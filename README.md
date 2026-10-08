@@ -1,6 +1,6 @@
 # QuantivaIQ — Enterprise Retail Analytics & Machine Learning Platform
 
-An end-to-end analytics and machine learning platform built on authentic transaction datasets from the **UCI Machine Learning Repository** and **Kaggle**. The platform ingests real-world UK e-commerce transactions and European payment card streams, loads them into an optimized SQL warehouse, executes scikit-learn & statsmodels ML pipelines for **Customer RFM Segmentation, ARIMA Demand Forecasting, Anomaly/Fraud Scoring, and Collaborative Recommendations**, and serves the insights through a responsive web dashboard and Power BI reports.
+An end-to-end analytics and machine learning platform built on authentic transaction datasets from the **UCI Machine Learning Repository** and **Kaggle**. The platform ingests real-world UK e-commerce transactions and European payment card streams, loads them into an optimized SQL warehouse (`quantivaiq.db`), executes scikit-learn & statsmodels ML pipelines for **Customer RFM Segmentation, ARIMA Demand Forecasting, Anomaly/Fraud Scoring, and Collaborative Recommendations**, and serves the insights through a responsive web dashboard and Power BI report feeds.
 
 **Live Deployed Application:** [https://quantiva-iq.vercel.app/](https://quantiva-iq.vercel.app/)  
 **Author:** Vedant Modi · [GitHub Profile](https://github.com/VEDANTMODI21)
@@ -9,52 +9,46 @@ An end-to-end analytics and machine learning platform built on authentic transac
 
 ## 📊 Live Platform Baseline Metrics (Real Data)
 
-All core figures reflect the uninflated, authentic transaction data loaded directly from the UCI Online Retail II warehouse:
+All core figures reflect authentic transaction data loaded directly into the relational warehouse (`quantivaiq.db`) from the UCI Online Retail II dataset:
 
 | Metric | Authentic Value | Context / Source |
 |---|---|---|
-| **Total Cumulative Revenue** | **£20,971,134.80** (~£20.97M) | Authentic order values in **British Pounds (`£` GBP)** |
-| **Total Completed Orders** | **48,369** invoices | Filtered completed transactions across 2009–2011 |
-| **Active Retail Customers** | **5,940** unique accounts | Global customer base across 40+ countries |
-| **Average Order Value (AOV)**| **£433.57** | Mean basket size across all customer segments |
-| **Catalog Breadth** | **4,932** unique products | Real catalog SKUs (e.g. *Regency Cakestand 3 Tier*, *White Hanging Heart T-Light Holder*) |
-| **Flagged Anomaly Cases** | **853** orders | Unsupervised ensemble detection (Isolation Forest + DBSCAN) |
+| **Total Cumulative Revenue** | **£20,972,627.24** (~£20.97M) | Authentic completed order values in **British Pounds (`£` GBP)** |
+| **Total Completed Orders** | **48,372** invoices | Filtered completed transactions across 2009–2011 |
+| **Active Retail Customers** | **5,940** unique accounts | Customer accounts across 40+ countries |
+| **Average Order Value (AOV)**| **£433.57** | Mean completed order basket size |
+| **Catalog Breadth** | **4,932** unique products | Real catalog SKUs (e.g., *Regency Cakestand 3 Tier*, *White Hanging Heart T-Light Holder*) |
+| **Warehouse Fraud Cases** | **56** logged entries | High-risk customer/order anomaly logs stored in `fraud_logs` table |
 
 ---
 
 ## 🗃️ Authentic Datasets & Currency Breakdown
 
-The platform integrates two independent benchmark datasets:
+The platform integrates two benchmark datasets:
 
 ### 1. Primary Retail & Demand Dataset: UCI Online Retail II
 * **Repository:** [UCI Machine Learning Repository — Online Retail II](https://archive.ics.uci.edu/dataset/502/online+retail+ii)
-* **Dataset Scope:** 1,067,371 rows recording all transactions between 01/12/2009 and 09/12/2011 for a registered UK-based online non-store retailer.
-* **Geographic Distribution:**
-  * **~91.0% United Kingdom**
-  * ~9.0% International exports (EIRE / Ireland, Germany, France, Netherlands, Spain, Switzerland, Australia, etc.)
-* **Currency:** **British Pounds Sterling (`£` GBP)**.
-  * Every item unit price (`Price`) is denominated in GBP (e.g., `£2.55` for *Regency Cakestand*, `£1.65` for *White Hanging Heart T-Light*).
-  * No synthetic inflation or arbitrary multipliers are applied.
-* **Warehouse Tables Populated:** `retail_customers`, `retail_products`, `retail_orders`, `retail_order_items`, `retail_payments`.
+* **Dataset Scope:** 1,067,371 records of transactions occurring between 01/12/2009 and 09/12/2011 for a UK-based online retailer.
+* **Geographic Scope:** ~91% United Kingdom, ~9% international exports (EIRE/Ireland, Germany, France, Netherlands, Spain, Switzerland, Australia, etc.).
+* **Currency:** **British Pounds Sterling (`£` GBP)**. Prices reflect genuine transaction values without synthetic inflation.
+* **Warehouse Tables Populated:** `customers`, `products`, `orders`, `order_items`, `payments`, `categories`, `suppliers`, `inventory`.
 
 ### 2. Anomaly & Fraud Dataset: Kaggle European Credit Card Fraud
 * **Repository:** [Kaggle / Machine Learning Group (MLG - ULB)](https://www.kaggle.com/datasets/mlg-ulb/creditcardfraud)
-* **Dataset Scope:** 284,807 transactions made by European cardholders in September 2013, with 492 confirmed fraudulent events (0.172% contamination).
-* **Features:** 28 PCA-transformed numerical features ($V_1$–$V_{28}$), transaction `Time`, and `Amount` (in Euros `€`).
-* **Usage:** Serves as the ground-truth benchmark for evaluating the supervised and unsupervised fraud/anomaly models.
-
-> **Note on Live Streaming:** The "Live Stream Feed" tab and "Simulate Order" action continuously stream synthetic order ticks on top of the authentic warehouse baseline to demonstrate real-time WebSocket/polling ingestion.
+* **Dataset Scope:** 284,807 transactions made by European cardholders in September 2013, including 492 fraud events.
+* **Features:** 28 PCA-transformed numerical features ($V_1$–$V_{28}$), transaction `Time`, and `Amount`.
+* **Usage:** Ground-truth benchmark for evaluating supervised/unsupervised fraud and anomaly models.
 
 ---
 
-## 🤖 Machine Learning Modules & Evaluation
+## 🤖 Machine Learning Engine & Implementation
 
-| Engine | Method / Architecture | Benchmark Evaluation |
+| Engine | Algorithm / Architecture | Implementation File |
 |---|---|---|
-| **Customer RFM Intelligence** | Log-transformed Recency, Frequency, and Monetary (RFM) clustering with K-Means ($k=4$: *Champions, Loyal, At-Risk, Regular*) | Silhouette Score: **0.62** / Davies-Bouldin: **0.58** |
-| **ARIMA Demand Forecasting** | Daily revenue time-series modeling via **ARIMA (5,1,0)** order optimized via AIC/BIC with 30-day forward horizon | Hold-out MAPE: **14.8%** / RMSE: **182.4** (vs. Naive Baseline MAPE: 26.3%) |
-| **ML Anomaly & Fraud Engine** | Supervised ensemble (Random Forest & XGBoost with SMOTE/class-weighting) + Unsupervised baseline (Isolation Forest + DBSCAN) | Test Precision: **0.94**, Recall: **0.82**, F1-Score: **0.88**, PR-AUC: **0.85** |
-| **Collaborative Recommendations** | Item-to-Item Collaborative Filtering using Cosine Similarity on sparse CSR User-Item co-occurrence matrices | Hit-Rate@5: **0.78**, Precision@5: **0.64** |
+| **Customer RFM Intelligence** | Log/Quantile RFM scoring ($R, F, M \in [1..5]$) mapping to segments (*VIP*, *Loyal*, *At-Risk*, *Inactive*, *Regular*) + Random Forest Churn Classifier & CLTV Regressor | [customer_intelligence.py](file:///c:/Users/HP/QuantivaI/QuantivaI/python/customer_intelligence.py) |
+| **Demand Forecasting** | Daily sales time-series modeling via **ARIMA (5,1,0)** order & Linear Regression with lag features (`lag_1`, `lag_7`, `day_of_week`) | [forecasting.py](file:///c:/Users/HP/QuantivaI/QuantivaI/python/forecasting.py) |
+| **ML Anomaly & Fraud Engine** | Multi-model Ensemble Voting: **Isolation Forest** (`contamination=0.02`), **DBSCAN** (`eps=2.5, min_samples=5`), and **Z-Score** outliers ($|Z| > 3$) | [fraud_detection.py](file:///c:/Users/HP/QuantivaI/QuantivaI/python/fraud_detection.py) |
+| **Collaborative Recommendations** | Item-to-Item Collaborative Filtering using Cosine Similarity on sparse CSR User-Item co-occurrence matrices (`scipy.sparse.csr_matrix`) | [recommendation_engine.py](file:///c:/Users/HP/QuantivaI/QuantivaI/python/recommendation_engine.py) / [analytics.py](file:///c:/Users/HP/QuantivaI/QuantivaI/analytics.py) |
 
 ---
 
@@ -69,34 +63,34 @@ The platform integrates two independent benchmark datasets:
                                                       v
                                   +---------------------------------------+
                                   |      ETL & Data Cleaning Pipeline     |
-                                  |  • Cancelled/Return filtering (C-code)|
-                                  |  • Missing customer imputation        |
-                                  |  • Schema normalization (5 tables)    |
+                                  |  • Cancelled invoice handling (C-code)|
+                                  |  • Schema normalization & indexing    |
+                                  |  • Product categorization & suppliers |
                                   +-------------------+-------------------+
                                                       |
                                                       v
                                   +---------------------------------------+
                                   |      Relational SQL Warehouse         |
-                                  |  • SQLite (21.7MB optimized VACUUM)   |
-                                  |  • PostgreSQL (Production / Docker)   |
+                                  |  • SQLite (22.8 MB quantivaiq.db)     |
+                                  |  • PostgreSQL schema & procedures     |
                                   +---------+-------------------+---------+
                                             |                   |
                      +----------------------+                   +----------------------+
                      v                                                                 v
 +------------------------------------------+                       +------------------------------------------+
 |          ML & Analytics Pipeline         |                       |            Power BI Dashboards           |
-| • RFM K-Means Clustering                 |                       | • DirectQuery & CSV Export Feeds         |
-| • ARIMA (5,1,0) Demand Forecasting       |                       | • Executive Overview & Fraud Analysis    |
+| • RFM Quantile & K-Means Segmentation    |                       | • CSV Data Feeds & DirectQuery           |
+| • ARIMA (5,1,0) Demand Forecasting       |                       | • Customer & Sales Materialized Views    |
 | • Isolation Forest + DBSCAN Ensemble     |                       +------------------------------------------+
 | • Sparse Item-Item Recommendations       |
 +--------------------+---------------------+
                      |
                      v
 +------------------------------------------+
-|      Vercel Serverless / Flask Engine    |
-| • RESTful Endpoints (/api/metrics)       |
-| • Sub-50ms Cold-Start Response Time      |
-| • Glassmorphic Dark Dashboard            |
+|          Flask / Vercel Web Engine       |
+| • RESTful API Endpoints (/api/metrics)   |
+| • Glassmorphic Dark UI (index.html)      |
+| • Real-time Transaction Simulator Stream |
 +------------------------------------------+
 ```
 
@@ -107,31 +101,52 @@ The platform integrates two independent benchmark datasets:
 ```
 QuantivaI/
 ├── api/
-│   ├── index.py                    # Vercel Serverless entry point (Flask WSGI wrapper)
-│   └── requirements.txt            # Lean serverless runtime dependencies
+│   └── index.py                    # Vercel Serverless entry point (Flask WSGI wrapper)
 ├── dashboards/
-│   └── powerbi_data/               # Pre-generated Power BI CSV data feeds
-│       ├── customers.csv
-│       ├── orders.csv
-│       ├── order_items.csv
-│       ├── products.csv
-│       └── payments.csv
-├── datasets/                       # Raw benchmark datasets (UCI Excel / Kaggle CSV)
+│   ├── powerbi_data/               # Pre-generated Power BI CSV data feeds
+│   │   ├── customers.csv
+│   │   ├── orders.csv
+│   │   ├── order_items.csv
+│   │   ├── products.csv
+│   │   ├── payments.csv
+│   │   ├── customer_segments.csv
+│   │   ├── fraud_logs.csv
+│   │   ├── inventory.csv
+│   │   ├── refunds.csv
+│   │   ├── suppliers.csv
+│   │   ├── categories.csv
+│   │   └── mv_*.csv                # Materialized view exports for Power BI
+│   ├── powerbi_template.md         # Power BI dashboard build instructions
+│   └── powerbi_dashboard_template.md
+├── datasets/                       # Benchmark datasets (UCI Excel & Kaggle CSV)
+│   ├── online_retail_II.xlsx
+│   └── creditcard.csv
+├── docs/                           # Documentation assets
 ├── python/
-│   ├── config.py                   # Environment, SQLite auto-discovery & DB connection
-│   ├── db_setup.py                 # DDL schema definition & index creation
-│   ├── etl_real_data.py            # UCI & Kaggle ETL ingestion script
-│   ├── customer_intelligence.py    # RFM feature engineering & K-Means clustering
-│   ├── forecasting.py              # ARIMA time-series daily sales model
-│   ├── fraud_detection.py          # Isolation Forest, DBSCAN & supervised models
-│   ├── recommendation_engine.py    # Sparse User-Item collaborative filtering
-│   └── web_dashboard.py            # Local Flask dashboard server
+│   ├── config.py                   # DB connection & logging config
+│   ├── db_setup.py                 # SQLite & PostgreSQL DDL schema initialization
+│   ├── etl_real_data.py            # UCI & Kaggle ETL ingestion pipeline
+│   ├── customer_intelligence.py    # RFM segmentation, Churn & CLTV models
+│   ├── forecasting.py              # ARIMA & Linear Regression sales forecasting
+│   ├── fraud_detection.py          # Isolation Forest, DBSCAN & Z-score ensemble
+│   ├── recommendation_engine.py    # Sparse matrix collaborative filtering
+│   ├── live_data_generator.py      # Real-time streaming transaction simulator
+│   ├── export_powerbi_csv.py       # Power BI CSV exporter
+│   ├── utils.py                    # Shared database helper functions
+│   └── web_dashboard.py            # Core Flask Web Application server
+├── sql/
+│   ├── schema.sql                  # PostgreSQL table definitions
+│   ├── procedures.sql              # Stored procedures & triggers
+│   └── analytics_queries.sql       # Analytical KPI & query library
 ├── templates/
-│   ├── base.html                   # Shared glassmorphic dark theme layout
-│   └── index.html                  # Executive overview, KPI cards & live feed tab
-├── analytics.py                    # Serverless analytical querying & sparse matrix engine
-├── quantivaiq.db                   # Optimized 21.7MB SQLite relational warehouse
-├── vercel.json                     # Vercel build & route configurations
+│   ├── base.html                   # Glassmorphic base HTML template
+│   └── index.html                  # Executive overview dashboard UI
+├── analytics.py                    # Optimized serverless ML analytics module
+├── index.html                      # Lightweight single-page dashboard fallback
+├── quantivaiq.db                   # Optimized 22.8 MB SQLite relational warehouse
+├── run_demo.py                     # Standalone in-memory pipeline demo
+├── web_dashboard.py                # Root application launch script
+├── vercel.json                     # Vercel serverless deployment config
 └── README.md                       # Project documentation
 ```
 
@@ -139,47 +154,70 @@ QuantivaI/
 
 ## 🚀 Quickstart & Execution
 
-### 1. Local Dashboard Execution
+### 1. Running the Web Dashboard Locally
 
 ```bash
 git clone https://github.com/VEDANTMODI21/QuantivaI.git
 cd QuantivaI
+
+# Create and activate virtual environment
 python -m venv venv
 # On Windows:
 venv\Scripts\activate
 # On Linux/macOS:
 source venv/bin/activate
 
+# Install dependencies
 pip install -r requirements.txt
-python python/web_dashboard.py
+
+# Run local web server
+python web_dashboard.py
 ```
 Open **`http://localhost:8000`** in your browser.
 
-### 2. Rebuilding the Database & Retraining Models
+### 2. Standalone In-Memory Demo Execution
 
-To re-run the full pipeline from raw data:
+To quickly test the ML pipelines without a database setup:
 ```bash
-# 1. Create relational tables and indexes
+python run_demo.py
+```
+
+### 3. Rebuilding Database & Re-running ETL Pipeline
+
+To populate or refresh the SQLite warehouse (`quantivaiq.db`) from raw dataset files:
+```bash
+# 1. Initialize schema
 python python/db_setup.py
 
-# 2. Ingest authentic UCI retail transactions & Kaggle card dataset
+# 2. Ingest authentic UCI retail transactions
 python python/etl_real_data.py
 
-# 3. Train ML models and export Power BI tables
+# 3. Execute ML pipelines and segment updates
 python python/customer_intelligence.py
 python python/forecasting.py
 python python/fraud_detection.py
 python python/recommendation_engine.py
+
+# 4. Export refreshed CSV data feeds for Power BI
+python python/export_powerbi_csv.py
 ```
 
 ---
 
-## ⚡ Serverless Deployment Optimizations (Vercel)
+## 🔌 API Endpoints Summary
 
-To run all machine-learning models within Vercel's Serverless Function constraints (50 MB package size, 10-second timeout, 250 MB RAM):
-1. **Vacuumed SQLite Relational Footprint:** Compressed the 1.06M row warehouse into an optimized 21.7 MB SQLite database (`quantivaiq.db`) with B-tree indexing on `customer_id`, `order_date`, and `product_id`.
-2. **Sparse CSR Matrix Computation:** Replaced dense pandas co-occurrence matrices with `scipy.sparse.csr_matrix` for recommendations, reducing memory allocation from 220 MB down to <8 MB.
-3. **Snapshot-Relative Date Windows:** Fixed time-series and RFM snapshot anchors to the dataset boundary (`max(order_date) + 1 day`) to prevent zero-activity recency decay.
+| Endpoint | Method | Description |
+|---|---|---|
+| `/` | `GET` | Main executive web dashboard |
+| `/health` | `GET` | Health check endpoint for container / service monitoring |
+| `/api/metrics` | `GET` | Complete executive dashboard metrics and ML analytics payload |
+| `/api/fraud` | `GET` | Top suspicious customer profiles and anomaly counts |
+| `/api/forecast` | `GET` | Historical revenue data and 14-day ARIMA forecast |
+| `/api/segments` | `GET` | Customer RFM segment counts and average spend |
+| `/api/recommendations` | `GET` | Personalized product recommendations by customer ID |
+| `/api/recent-orders` | `GET` | Stream of recent transaction records |
+| `/api/simulator/trigger` | `POST` | Injects a live transaction tick for streaming demonstrations |
+| `/api/export/csv` | `GET` | Streams executive KPI summary as a downloadable CSV |
 
 ---
 

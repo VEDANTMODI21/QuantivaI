@@ -6,10 +6,10 @@ from sklearn.cluster import DBSCAN
 from sklearn.preprocessing import StandardScaler
 try:
     from .config import setup_logging
-    from .utils import get_engine, fetch_data, bulk_insert
+    from .utils import get_engine, fetch_data, bulk_insert, execute_query
 except ImportError:
     from config import setup_logging
-    from utils import get_engine, fetch_data, bulk_insert
+    from utils import get_engine, fetch_data, bulk_insert, execute_query
 
 
 logger = setup_logging("FraudDetection")
@@ -103,7 +103,6 @@ class FraudDetector:
                     fraud_type = "Statistical Outlier"
 
                 # Normalize risk score 0-100 based on isolation forest score
-                # iso_score is usually between -0.5 and 0.5. More negative = more abnormal.
                 raw_score = row['iso_score']
                 risk = min(100, max(0, int((-raw_score + 0.2) * 200))) 
                 
@@ -116,6 +115,7 @@ class FraudDetector:
                     "is_confirmed": False
                 })
                 
+            execute_query("DELETE FROM fraud_logs")
             bulk_insert(pd.DataFrame(logs), "fraud_logs")
             logger.info("Fraud logs successfully inserted.")
 

@@ -58,7 +58,7 @@
         {{ '{:,}'.format(fraud_cases) }}
       </div>
       <div class="kpi-subtext warning">
-        <span>Isolation Forest + DBSCAN Ensemble</span>
+        <span>Isolation Forest + DBSCAN + Z-Score Ensemble</span>
       </div>
     </div>
   </div>
@@ -141,7 +141,7 @@
         <div class="card-header">
           <h3 class="card-title" style="color: var(--accent-rose);">
             <svg style="width:20px;height:20px;fill:var(--accent-rose)" viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-5.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>
-            Machine Learning Fraud Anomaly Engine (Isolation Forest + DBSCAN Ensemble)
+            Machine Learning Fraud Anomaly Engine (Isolation Forest + DBSCAN + Z-Score Ensemble)
           </h3>
           <span class="badge badge-danger"><span id="fraud-badge-count">{{ fraud_cases }}</span> Flagged Profiles</span>
         </div>
@@ -526,8 +526,8 @@
       };
       new ApexCharts(document.querySelector("#chart-segments-bar"), segOptions).render();
 
-      // Auto-poll every 3.5 seconds with live stream tick for continuous real-time updates
-      setInterval(() => refreshAllMetrics(true), 3500);
+      // Auto-poll every 10 seconds for metric updates
+      setInterval(() => refreshAllMetrics(false), 10000);
     });
   </script>
 

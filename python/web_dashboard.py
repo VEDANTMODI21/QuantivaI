@@ -212,17 +212,6 @@ def index():
 
 @app.route('/api/metrics')
 def api_metrics():
-    # In serverless environments (Vercel) or when tick requested, simulate incoming stream traffic
-    if os.getenv("VERCEL") or request.args.get("tick") == "1" or random.random() < 0.35:
-        try:
-            try:
-                from .live_data_generator import LiveSimulator
-            except ImportError:
-                from live_data_generator import LiveSimulator
-            LiveSimulator().simulate_traffic()
-        except Exception as e:
-            logger.debug(f"Serverless simulation note: {e}")
-
     metrics = fetch_dashboard_metrics()
     analytics = get_scaled_analytics()
     return jsonify({**metrics, "analytics": analytics})
@@ -354,7 +343,7 @@ def start_background_simulator():
     t.start()
 
 
-if os.getenv("RUN_SIMULATOR", "1") == "1":
+if os.getenv("RUN_SIMULATOR", "0") == "1":
     try:
         start_background_simulator()
     except Exception as e:
@@ -364,3 +353,4 @@ if os.getenv("RUN_SIMULATOR", "1") == "1":
 if __name__ == '__main__':
     port = int(os.getenv("PORT", 8000))
     app.run(host='0.0.0.0', port=port, debug=False)
+
