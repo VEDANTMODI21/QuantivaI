@@ -32,7 +32,6 @@ The platform processes authentic transactions from the **UCI Online Retail II** 
 * **Geographic Scope:** ~91% United Kingdom, ~9% international exports (EIRE/Ireland, Germany, France, Netherlands, Spain, Switzerland, Australia, etc.).
 * **Currency:** **British Pounds Sterling (`£` GBP)**. Prices reflect genuine transaction values without synthetic inflation.
 * **Warehouse Tables Populated:** `customers`, `products`, `orders`, `order_items`, `payments`, `categories`, `suppliers`, `inventory`, `fraud_logs`.
-* **Note on Streaming Demonstrations:** The live UI includes interactive "Simulate Order" demo triggers to showcase real-time ingest without altering fixed warehouse baseline KPIs.
 
 ---
 
@@ -85,8 +84,8 @@ The platform processes authentic transactions from the **UCI Online Retail II** 
 +------------------------------------------+
 |          Flask / Vercel Web Engine       |
 | • RESTful API Endpoints (/api/metrics)   |
-| • Glassmorphic Dark UI (index.html)      |
-| • Simulated Order Demo Stream (10s poll) |
+| • Glassmorphic Dark UI (templates/index) |
+| • On-demand Analytical Reports & CSV     |
 +------------------------------------------+
 ```
 
@@ -211,7 +210,6 @@ python python/export_powerbi_csv.py
 | `/api/segments` | `GET` | Customer RFM segment counts and average spend |
 | `/api/recommendations` | `GET` | Personalized product recommendations by customer ID |
 | `/api/recent-orders` | `GET` | Stream of recent transaction records |
-| `/api/simulator/trigger` | `POST` | Injects a live transaction tick for streaming demonstrations |
 | `/api/export/csv` | `GET` | Streams executive KPI summary as a downloadable CSV |
 
 ---

@@ -19,7 +19,7 @@
         {{ total_revenue_formatted if total_revenue_formatted else ('£ {:,.2f}'.format(total_revenue)) }}
       </div>
       <div class="kpi-subtext positive">
-        <span id="kpi-live-indicator">▲ 10s polling auto-refresh</span>
+        <span id="kpi-live-indicator">▲ Authentic UCI Retail Baseline</span>
       </div>
     </div>
 
@@ -70,10 +70,6 @@
     <button class="nav-tab" onclick="switchTab('segmentation', this)">🎯 Customer RFM Intelligence</button>
     <button class="nav-tab" onclick="switchTab('forecasting', this)">📈 ARIMA Demand Forecast</button>
     <button class="nav-tab" onclick="switchTab('recommendations', this)">💡 ML Recommendations</button>
-    <button class="nav-tab" onclick="switchTab('livefeed', this)">
-      <span style="width:8px;height:8px;border-radius:50%;background:#10B981;display:inline-block;animation:pulse 1.5s infinite;"></span>
-      ⚡ Simulated Order Stream
-    </button>
   </div>
 
   <!-- TAB 1: EXECUTIVE OVERVIEW -->
@@ -342,53 +338,7 @@
     </div>
   </div>
 
-  <!-- TAB 6: LIVE STREAM FEED -->
-  <div id="tab-livefeed" class="tab-panel">
-    <div class="section-grid">
-      <div class="card full-width">
-        <div class="card-header">
-          <div>
-            <h3 class="card-title">
-              <svg style="width:20px;height:20px;fill:var(--accent-emerald)" viewBox="0 0 24 24"><path d="M13 3h-2v10h2V3zm4.83 2.17l-1.42 1.42C17.99 7.86 19 9.81 19 12c0 3.87-3.13 7-7 7s-7-3.13-7-7c0-2.19 1.01-4.14 2.58-5.42L6.17 5.17C4.23 6.82 3 9.26 3 12c0 4.97 4.03 9 9 9s9-4.03 9-9c0-2.74-1.23-5.18-3.17-6.83z"/></svg>
-              Live Operational Order Feed (GBP £)
-            </h3>
-            <p style="margin: 4px 0 0; font-size: 0.82rem; color: var(--text-secondary);">
-              <em>Live telemetry stream: new orders auto-refresh every 3.5 seconds.</em>
-            </p>
-          </div>
-          <button class="btn btn-primary" onclick="triggerSimulation()">⚡ Simulate Instant Transaction</button>
-        </div>
-        <div style="overflow-x:auto;">
-          <table>
-            <thead>
-              <tr>
-                <th>Invoice ID</th>
-                <th>Customer ID</th>
-                <th>Invoice Date</th>
-                <th>Country / Destination</th>
-                <th style="text-align: right;">Total Amount (GBP)</th>
-                <th>Invoice Status</th>
-              </tr>
-            </thead>
-            <tbody id="recent-orders-body">
-              {% for o in recent_orders %}
-                <tr>
-                  <td style="font-family: monospace; color: var(--accent-indigo);">#{{ o.order_id }}</td>
-                  <td style="font-weight: 600;">Customer #{{ o.customer_id }}</td>
-                  <td style="color: var(--text-secondary); font-size: 0.82rem;">{{ o.order_date }}</td>
-                  <td>{{ o.country if o.country else o.region }}</td>
-                  <td style="text-align: right; font-weight: 700; color: var(--accent-emerald);">{{ o.amount_formatted }}</td>
-                  <td><span class="badge badge-success">{{ o.status }}</span></td>
-                </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ApexCharts Render Script & Real-Time Polling -->
+  <!-- ApexCharts Render Script & Dynamic Metrics -->
   <script>
     function switchTab(tabId, btn) {
       document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
@@ -397,47 +347,7 @@
       btn.classList.add('active');
     }
 
-    let lastKnownOrderId = null;
-
-    async function triggerSimulation() {
-      try {
-        const btn = event ? event.target : null;
-        if (btn) {
-          btn.disabled = true;
-          btn.dataset.oldText = btn.innerHTML;
-          btn.innerHTML = '⏳ Ingesting...';
-        }
-        const resp = await fetch('/api/simulator/trigger', { method: 'POST' });
-        const res = await resp.json();
-        
-        if (res.status === 'success') {
-          if (typeof showToast === 'function') {
-            showToast('⚡ Live transaction injected into stream!');
-          }
-          await refreshAllMetrics();
-          
-          // Switch to Live Stream tab automatically if requested
-          const liveTabBtn = document.querySelectorAll('.nav-tab')[5];
-          if (liveTabBtn && !liveTabBtn.classList.contains('active')) {
-            switchTab('livefeed', liveTabBtn);
-          }
-        } else {
-          if (typeof showToast === 'function') {
-            showToast(res.message || 'Simulation error', true);
-          }
-        }
-        if (btn) {
-          btn.disabled = false;
-          btn.innerHTML = btn.dataset.oldText || '⚡ Simulate Order';
-        }
-      } catch(e) {
-        if (typeof showToast === 'function') {
-          showToast('Simulation error: ' + e, true);
-        }
-      }
-    }
-
-    async function refreshAllMetrics(isTick = false) {
+    async function refreshAllMetrics() {
       try {
         const resp = await fetch('/api/metrics' + (isTick ? '?tick=1' : ''));
         if (!resp.ok) return;
@@ -579,9 +489,6 @@
         grid: { borderColor: 'rgba(255, 255, 255, 0.06)' }
       };
       new ApexCharts(document.querySelector("#chart-segments-bar"), segOptions).render();
-
-      // Auto-poll every 10 seconds for metric updates
-      setInterval(() => refreshAllMetrics(false), 10000);
     });
   </script>
 
