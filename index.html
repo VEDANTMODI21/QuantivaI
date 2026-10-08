@@ -13,21 +13,21 @@ h1{font-size:2rem;margin:0}h1 span{color:var(--ac)}.sub{color:var(--mu);margin:6
 td:last-child,th:last-child{text-align:right}.bar{height:8px;background:var(--ac);border-radius:4px}.err{color:#f87171}
 svg{width:100%;height:150px}
 </style></head><body>
-<span class="pill" id="pill">LIVE · refreshes every 10s</span>
+<span class="pill" id="pill">DEMO · refreshes every 10s</span>
 <h1>Quantiva<span>IQ</span> Platform</h1>
-<p class="sub">Retail analytics (£ GBP) · sales, fraud &amp; anomalies, segments, forecast &amp; recommendations in one view</p>
+<p class="sub">Retail analytics (£ GBP) · sales, outliers, segments, forecast &amp; recommendations</p>
 {% if not db_ok %}<p class="err">Database unavailable: {{ db_error }}</p>{% endif %}
 <div class="grid k">
 <div class="c"><h3>Total customers</h3><div class="big" id="cu">–</div></div>
-<div class="c"><h3>Total orders</h3><div class="big" id="or">–</div></div>
+<div class="c"><h3>Total completed orders</h3><div class="big" id="or">–</div></div>
 <div class="c"><h3>Total revenue</h3><div class="big" id="rv">–</div></div>
-<div class="c"><h3>Fraud flagged (Isolation Forest + DBSCAN + Z-Score)</h3><div class="big" id="fr">–</div></div></div>
+<div class="c"><h3>Outliers flagged (IsoForest+DBSCAN+ZScore)</h3><div class="big" id="fr">–</div></div></div>
 <div class="grid g2">
 <div class="c"><h3>Top products by revenue</h3><table id="tp"></table></div>
-<div class="c"><h3>Revenue by region</h3><table id="rg"></table></div>
+<div class="c"><h3>Revenue by country</h3><table id="rg"></table></div>
 <div class="c"><h3>Customer segments (RFM)</h3><table id="sg"></table></div>
 <div class="c"><h3>Sales forecast (ARIMA, next 14 days)</h3><svg id="fc" viewBox="0 0 400 150" preserveAspectRatio="none"></svg><div class="sub" id="fcn" style="margin:6px 0 0"></div></div>
-<div class="c"><h3>Top suspicious customers</h3><table id="fd"></table></div>
+<div class="c"><h3>Top outlier customers</h3><table id="fd"></table></div>
 <div class="c"><h3>Recommended products</h3><table id="rc"></table></div></div>
 <script>
 const gbp=v=>v>=1e6?'£'+(v/1e6).toFixed(2)+'M':v>=1e3?'£'+(v/1e3).toFixed(1)+'k':'£'+Number(v).toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -37,13 +37,13 @@ function line(h,f){const all=h.concat(f);if(all.length<2)return'';const mx=Math.
 const p=(a,o)=>a.map((v,i)=>x(i+o)+','+y(v)).join(' ');
 return`<polyline fill="none" stroke="#8b5cf6" stroke-width="2" points="${p(h,0)}"/><polyline fill="none" stroke="#10b981" stroke-width="2" stroke-dasharray="5" points="${p(f,h.length)}"/>`}
 async function load(){try{const d=await (await fetch('/api/metrics')).json();
-$('cu').textContent=d.total_customers.toLocaleString('en-GB');$('or').textContent=d.total_orders.toLocaleString('en-GB');
+$('cu').textContent=d.total_customers.toLocaleString('en-GB');$('or').textContent=(d.completed_orders||d.total_orders).toLocaleString('en-GB');
 $('rv').textContent=gbp(d.total_revenue);$('fr').textContent=d.fraud&&d.fraud.flagged!=null?d.fraud.flagged:d.fraud_cases;
 const mx=Math.max(...d.top_products.map(r=>r.revenue));
 $('tp').innerHTML=rows(d.top_products,r=>`<tr><td>${r.product_name}<div class="bar" style="width:${r.revenue/mx*100}%"></div></td><td>${gbp(r.revenue)}</td></tr>`);
-$('rg').innerHTML=rows(d.revenue_by_region,r=>`<tr><td>${r.region}</td><td>${gbp(r.revenue)}</td></tr>`);
+$('rg').innerHTML=rows(d.revenue_by_region,r=>`<tr><td>${r.country||r.region}</td><td>${gbp(r.revenue)}</td></tr>`);
 if(!bad(d.segments,'sg'))$('sg').innerHTML=rows(d.segments,r=>`<tr><td>${r.segment_name||r.segment}</td><td>${r.customers.toLocaleString('en-GB')}</td></tr>`);
-if(!bad(d.fraud,'fd'))$('fd').innerHTML='<tr><th>Customer</th><th>Avg order · votes</th></tr>'+rows(d.fraud.top,r=>`<tr><td>#${r.customer_id}</td><td>${r.avg_formatted||gbp(r.avg)} · ${r.votes}/3</td></tr>`);
+if(!bad(d.fraud,'fd'))$('fd').innerHTML='<tr><th>Customer</th><th>Avg order · returns</th></tr>'+rows(d.fraud.top,r=>`<tr><td>#${r.customer_id}</td><td>${r.avg_formatted||gbp(r.avg)} · ${(r.refund_ratio*100).toFixed(1)}% cancels</td></tr>`);
 if(!bad(d.recs,'rc'))$('rc').innerHTML=rows(d.recs,r=>`<tr><td>#${r.customer_id}</td><td>${r.items.join(', ')}</td></tr>`);
 if(d.forecast&&!d.forecast.error){$('fc').innerHTML=line(d.forecast.history,d.forecast.forecast);$('fcn').textContent=d.forecast.forecast.length?'Next 14 days avg: '+gbp(d.forecast.forecast.reduce((a,b)=>a+b,0)/d.forecast.forecast.length)+'/day':'Forecast unavailable'}
 }catch(e){$('pill').textContent='OFFLINE'}}

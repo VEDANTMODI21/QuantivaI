@@ -27,7 +27,7 @@ class CustomerIntelligence:
                 COUNT(order_id) AS frequency,
                 SUM(total_amount) AS monetary
             FROM orders
-            WHERE status = 'Completed'
+            WHERE status = 'Completed' AND customer_id != 99999
             GROUP BY customer_id
         """
         rfm_df = fetch_data(query)
@@ -56,11 +56,28 @@ class CustomerIntelligence:
 
         rfm_df['segment_name'] = rfm_df.apply(map_segment, axis=1)
 
+        segments_to_insert = rfm_df[['customer_id', 'segment_name', 'rfm_score', 'recency', 'frequency', 'monetary']].copy()
+
+        # Include registered accounts with zero completed orders (only cancelled/returns) as Inactive
+        canc_only = fetch_data(
+            "SELECT customer_id FROM customers WHERE customer_id != 99999 "
+            "AND customer_id NOT IN (SELECT DISTINCT customer_id FROM orders WHERE status = 'Completed')"
+        )
+        if not canc_only.empty:
+            inactive_rows = pd.DataFrame({
+                'customer_id': canc_only['customer_id'],
+                'segment_name': 'Inactive Customers',
+                'rfm_score': '111',
+                'recency': 730,
+                'frequency': 0,
+                'monetary': 0.0
+            })
+            segments_to_insert = pd.concat([segments_to_insert, inactive_rows], ignore_index=True)
+
         # Clear and Insert
         execute_query("DELETE FROM customer_segments")
-        segments_to_insert = rfm_df[['customer_id', 'segment_name', 'rfm_score', 'recency', 'frequency', 'monetary']]
         bulk_insert(segments_to_insert, "customer_segments")
-        logger.info("RFM Segmentation complete.")
+        logger.info(f"RFM Segmentation complete: {len(segments_to_insert)} total customer profiles segmented.")
 
     def predict_churn(self):
         logger.info("Training Churn Prediction Model...")
@@ -73,7 +90,7 @@ class CustomerIntelligence:
                 AVG(o.total_amount) AS avg_order_value
             FROM customers c
             JOIN orders o ON c.customer_id = o.customer_id
-            WHERE o.status = 'Completed'
+            WHERE o.status = 'Completed' AND c.customer_id != 99999
             GROUP BY c.customer_id
         """
         df = fetch_data(query)
@@ -107,7 +124,7 @@ class CustomerIntelligence:
                 substr(order_date, 1, 7) as month,
                 SUM(total_amount) as amount
             FROM orders
-            WHERE status = 'Completed'
+            WHERE status = 'Completed' AND customer_id != 99999
             GROUP BY customer_id, substr(order_date, 1, 7)
         """
         df = fetch_data(query)

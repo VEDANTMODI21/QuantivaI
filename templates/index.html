@@ -19,7 +19,7 @@
         {{ total_revenue_formatted if total_revenue_formatted else ('£ {:,.2f}'.format(total_revenue)) }}
       </div>
       <div class="kpi-subtext positive">
-        <span id="kpi-live-indicator">▲ Real-time auto-updating stream</span>
+        <span id="kpi-live-indicator">▲ 10s polling auto-refresh</span>
       </div>
     </div>
 
@@ -29,10 +29,10 @@
         <svg style="width:18px;height:18px;fill:var(--accent-indigo)" viewBox="0 0 24 24"><path d="M19 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>
       </div>
       <div class="kpi-value" id="kpi-total-orders">
-        {{ '{:,}'.format(total_orders) }}
+        {{ '{:,}'.format(completed_orders if completed_orders else total_orders) }}
       </div>
       <div class="kpi-subtext positive">
-        <span>▲ 94.2% completion rate</span>
+        <span>▲ {{ completion_rate }}% completion rate ({{ '{:,}'.format(total_orders) }} total invoices)</span>
       </div>
     </div>
 
@@ -45,13 +45,13 @@
         {{ '{:,}'.format(total_customers) }}
       </div>
       <div class="kpi-subtext positive">
-        <span>Avg Spend: <span id="kpi-avg-spend">{{ avg_order_value_formatted }}</span></span>
+        <span>Avg Basket: <span id="kpi-avg-spend">{{ avg_order_value_formatted }}</span></span>
       </div>
     </div>
 
     <div class="kpi-card" style="border-left: 4px solid var(--accent-rose);">
       <div class="kpi-title">
-        <span>Flagged Anomaly Cases</span>
+        <span>Flagged Outlier Cases</span>
         <svg style="width:18px;height:18px;fill:var(--accent-rose)" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
       </div>
       <div class="kpi-value" id="kpi-fraud-cases" style="color: var(--accent-rose);">
@@ -66,13 +66,13 @@
   <!-- Navigation Tabs -->
   <div class="nav-tabs">
     <button class="nav-tab active" onclick="switchTab('overview', this)">📊 Executive Overview</button>
-    <button class="nav-tab" onclick="switchTab('fraud', this)">🚨 ML Fraud &amp; Anomaly Engine</button>
+    <button class="nav-tab" onclick="switchTab('fraud', this)">🚨 ML Outlier &amp; Fraud Engine</button>
     <button class="nav-tab" onclick="switchTab('segmentation', this)">🎯 Customer RFM Intelligence</button>
     <button class="nav-tab" onclick="switchTab('forecasting', this)">📈 ARIMA Demand Forecast</button>
     <button class="nav-tab" onclick="switchTab('recommendations', this)">💡 ML Recommendations</button>
     <button class="nav-tab" onclick="switchTab('livefeed', this)">
       <span style="width:8px;height:8px;border-radius:50%;background:#10B981;display:inline-block;animation:pulse 1.5s infinite;"></span>
-      ⚡ Live Stream Feed
+      ⚡ Simulated Order Stream
     </button>
   </div>
 
@@ -141,12 +141,12 @@
         <div class="card-header">
           <h3 class="card-title" style="color: var(--accent-rose);">
             <svg style="width:20px;height:20px;fill:var(--accent-rose)" viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-5.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>
-            Machine Learning Fraud Anomaly Engine (Isolation Forest + DBSCAN + Z-Score Ensemble)
+            Machine Learning Outlier &amp; Fraud Engine (Isolation Forest + DBSCAN + Z-Score Ensemble)
           </h3>
           <span class="badge badge-danger"><span id="fraud-badge-count">{{ fraud_cases }}</span> Flagged Profiles</span>
         </div>
         <p style="color: var(--text-secondary); margin-top: 0;">
-          Multi-model ensemble anomaly detection flags retail accounts exhibiting abnormal order velocities, refund abuse, or transaction outlier spikes.
+          Multi-model ensemble anomaly detection flags retail customer accounts exhibiting abnormal order velocities, high return/cancellation frequencies, or extreme order baskets.
         </p>
 
         <div style="overflow-x:auto; margin-top: 16px;">
@@ -155,9 +155,9 @@
               <tr>
                 <th>Customer ID</th>
                 <th>Avg Order Amount (GBP)</th>
-                <th>Refund Ratio</th>
+                <th>Return / Cancellation Ratio</th>
                 <th>Ensemble Anomaly Votes</th>
-                <th>Risk Classification</th>
+                <th>Outlier Classification</th>
               </tr>
             </thead>
             <tbody id="fraud-table-body">
@@ -166,7 +166,7 @@
                   <tr>
                     <td style="font-weight: 700; color: #FFFFFF;">Customer #{{ f.customer_id }}</td>
                     <td style="font-weight: 600; color: var(--accent-emerald);">{{ f.avg_formatted if f.avg_formatted else ('£ ' ~ f.avg) }}</td>
-                    <td><span class="badge badge-warning">{{ (f.refund_ratio * 100)|round(1) }}% Refunds</span></td>
+                    <td><span class="badge badge-warning">{{ (f.refund_ratio * 100)|round(1) }}% Return/Cancel</span></td>
                     <td>
                       <div style="display:flex; align-items:center; gap:6px;">
                         {% for i in range(f.votes) %}
@@ -175,11 +175,11 @@
                         <span style="font-weight:700;">{{ f.votes }}/3 Models</span>
                       </div>
                     </td>
-                    <td><span class="badge badge-danger">HIGH RISK ANOMALY</span></td>
+                    <td><span class="badge badge-warning">{{ f.classification if f.classification else 'High-Value Outlier' }}</span></td>
                   </tr>
                 {% endfor %}
               {% else %}
-                <tr><td colspan="5" style="text-align:center; color: var(--text-muted);">Running ML Fraud Detector...</td></tr>
+                <tr><td colspan="5" style="text-align:center; color: var(--text-muted);">Running ML Outlier Detector...</td></tr>
               {% endif %}
             </tbody>
           </table>
@@ -305,13 +305,12 @@
           <table>
             <thead>
               <tr>
-                <th>Order ID</th>
+                <th>Invoice ID</th>
                 <th>Customer ID</th>
-                <th>Date &amp; Time</th>
-                <th>Region</th>
-                <th>Payment Method</th>
+                <th>Invoice Date</th>
+                <th>Country / Destination</th>
                 <th style="text-align: right;">Total Amount (GBP)</th>
-                <th>Status</th>
+                <th>Invoice Status</th>
               </tr>
             </thead>
             <tbody id="recent-orders-body">
@@ -320,8 +319,7 @@
                   <td style="font-family: monospace; color: var(--accent-indigo);">#{{ o.order_id }}</td>
                   <td style="font-weight: 600;">Customer #{{ o.customer_id }}</td>
                   <td style="color: var(--text-secondary); font-size: 0.82rem;">{{ o.order_date }}</td>
-                  <td>{{ o.region }}</td>
-                  <td><span class="badge badge-purple">{{ o.payment_method }}</span></td>
+                  <td>{{ o.country if o.country else o.region }}</td>
                   <td style="text-align: right; font-weight: 700; color: var(--accent-emerald);">{{ o.amount_formatted }}</td>
                   <td><span class="badge badge-success">{{ o.status }}</span></td>
                 </tr>
@@ -442,8 +440,7 @@
               </td>
               <td style="font-weight: 600;">Customer #${o.customer_id}</td>
               <td style="color: var(--text-secondary); font-size: 0.82rem;">${o.order_date}</td>
-              <td>${o.region}</td>
-              <td><span class="badge badge-purple">${o.payment_method}</span></td>
+              <td>${o.country || o.region}</td>
               <td style="text-align: right; font-weight: 700; color: var(--accent-emerald);">${o.amount_formatted}</td>
               <td><span class="badge badge-success">${o.status}</span></td>
             </tr>

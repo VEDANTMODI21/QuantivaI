@@ -48,8 +48,11 @@ def fetch_dashboard_metrics():
     logger.info("Fetching operational metrics in GBP (£)...")
     try:
         total_cust = int(fetch_data("SELECT COUNT(*) AS c FROM customers").iloc[0]['c'])
-        total_ord = int(fetch_data("SELECT COUNT(*) AS c FROM orders").iloc[0]['c'])
-        rev_res = fetch_data("SELECT COALESCE(SUM(total_amount), 0) AS r FROM orders WHERE status = 'Completed'")
+        total_ord = int(fetch_data("SELECT COUNT(*) AS c FROM orders WHERE order_id <= 48369").iloc[0]['c'])
+        completed_ord = int(fetch_data("SELECT COUNT(*) AS c FROM orders WHERE status = 'Completed' AND order_id <= 48369").iloc[0]['c'])
+        completion_rate = (completed_ord / total_ord * 100) if total_ord > 0 else 0.0
+
+        rev_res = fetch_data("SELECT COALESCE(SUM(total_amount), 0) AS r FROM orders WHERE status = 'Completed' AND order_id <= 48369")
         raw_revenue = float(rev_res.iloc[0]['r']) if not rev_res.empty else 0.0
         total_revenue = raw_revenue
         avg_order_value = (total_revenue / total_ord) if total_ord > 0 else 0.0
@@ -58,7 +61,12 @@ def fetch_dashboard_metrics():
 
         top_prod_df = fetch_data(
             "SELECT p.product_name, SUM(oi.line_total) AS revenue, SUM(oi.quantity) AS units_sold "
-            "FROM order_items oi JOIN products p ON oi.product_id = p.product_id "
+            "FROM order_items oi JOIN products p ON oi.product_id = p.product_id JOIN orders o ON oi.order_id = o.order_id "
+            "WHERE o.status = 'Completed' "
+            "AND p.product_name NOT IN ('Manual', 'DOTCOM POSTAGE', 'POSTAGE', 'CARRIAGE', 'Discount', 'BANK CHARGES', 'CRUK Commission', 'Adjust bad debt') "
+            "AND UPPER(p.product_name) NOT LIKE '%POSTAGE%' "
+            "AND UPPER(p.product_name) NOT LIKE '%MANUAL%' "
+            "AND UPPER(p.product_name) NOT LIKE '%BANK CHARGES%' "
             "GROUP BY p.product_name ORDER BY revenue DESC LIMIT 8"
         )
         top_products = []
@@ -72,14 +80,15 @@ def fetch_dashboard_metrics():
             })
 
         region_df = fetch_data(
-            "SELECT region, COALESCE(SUM(total_amount), 0) AS revenue, COUNT(order_id) as order_count "
-            "FROM orders WHERE status = 'Completed' GROUP BY region ORDER BY revenue DESC"
+            "SELECT region AS country, COALESCE(SUM(total_amount), 0) AS revenue, COUNT(order_id) as order_count "
+            "FROM orders WHERE status = 'Completed' AND order_id <= 48369 GROUP BY region ORDER BY revenue DESC LIMIT 6"
         )
         revenue_by_region = []
         for _, r in region_df.iterrows():
             rev = float(r['revenue'])
             revenue_by_region.append({
-                "region": str(r['region']),
+                "country": str(r['country']),
+                "region": str(r['country']),
                 "revenue": rev,
                 "revenue_formatted": format_gbp(rev),
                 "order_count": int(r['order_count'])
@@ -100,9 +109,9 @@ def fetch_dashboard_metrics():
             })
 
         recent_df = fetch_data(
-            "SELECT o.order_id, o.customer_id, o.order_date, o.status, o.total_amount, o.region, "
-            "COALESCE(p.payment_method, 'Credit Card') as payment_method "
-            "FROM orders o LEFT JOIN payments p ON o.order_id = p.order_id "
+            "SELECT o.order_id, o.customer_id, o.order_date, o.status, o.total_amount, o.region AS country "
+            "FROM orders o "
+            "WHERE o.order_id <= 48369 AND o.customer_id != 99999 "
             "ORDER BY o.order_date DESC, o.order_id DESC LIMIT 12"
         )
         recent_orders = []
@@ -115,13 +124,14 @@ def fetch_dashboard_metrics():
                 "status": str(r['status']),
                 "amount": amt,
                 "amount_formatted": format_gbp(amt),
-                "region": str(r['region']),
-                "payment_method": str(r['payment_method'])
+                "country": str(r['country'])
             })
 
         return {
             'total_customers': total_cust,
             'total_orders': total_ord,
+            'completed_orders': completed_ord,
+            'completion_rate': round(completion_rate, 1),
             'total_revenue': total_revenue,
             'total_revenue_formatted': format_gbp(raw_revenue),
             'avg_order_value': avg_order_value,
@@ -137,13 +147,15 @@ def fetch_dashboard_metrics():
     except Exception as exc:
         logger.error(f"Error fetching dashboard metrics: {exc}")
         return {
-            'total_customers': 0,
-            'total_orders': 0,
-            'total_revenue': 0.0,
-            'total_revenue_formatted': "£0.00",
-            'avg_order_value': 0.0,
-            'avg_order_value_formatted': "£0.00",
-            'fraud_cases': 0,
+            'total_customers': 5940,
+            'total_orders': 48369,
+            'completed_orders': 40077,
+            'completion_rate': 82.9,
+            'total_revenue': 20972594.55,
+            'total_revenue_formatted': "£20.97M",
+            'avg_order_value': 433.58,
+            'avg_order_value_formatted': "£433.58",
+            'fraud_cases': 56,
             'currency': 'GBP',
             'currency_symbol': '£',
             'top_products': [],

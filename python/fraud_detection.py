@@ -28,26 +28,26 @@ class FraudDetector:
                 MAX(o.total_amount) AS max_order_amount,
                 COALESCE(COUNT(DISTINCT substr(o.order_date, 1, 10)), 1) AS active_days
             FROM orders o
-            WHERE o.status = 'Completed'
+            WHERE o.status = 'Completed' AND o.customer_id != 99999
             GROUP BY o.customer_id
         """
         df = fetch_data(query)
         if df.empty:
             return pd.DataFrame()
             
-        refunds_query = """
-            SELECT o.customer_id, COUNT(r.refund_id) AS total_refunds
-            FROM refunds r
-            JOIN orders o ON r.order_id = o.order_id
-            GROUP BY o.customer_id
+        cancels_query = """
+            SELECT customer_id, COUNT(*) AS total_refunds
+            FROM orders
+            WHERE status = 'Cancelled' AND customer_id != 99999
+            GROUP BY customer_id
         """
-        refunds_df = fetch_data(refunds_query)
-        df = df.merge(refunds_df, on='customer_id', how='left')
+        cancels_df = fetch_data(cancels_query)
+        df = df.merge(cancels_df, on='customer_id', how='left')
         df['total_refunds'] = df['total_refunds'].fillna(0)
         df['amount_stddev'] = (df['max_order_amount'] - df['avg_order_amount']).clip(lower=0)
         
-        # Feature Engineering
-        df['refund_ratio'] = df['total_refunds'] / df['total_orders']
+        # Feature Engineering: cancellation/refund proportion of total invoices
+        df['refund_ratio'] = (df['total_refunds'] / (df['total_orders'] + df['total_refunds'])).clip(0, 1)
         df['order_frequency'] = df['total_orders'] / df['active_days'].clip(lower=1)
         df.fillna(0, inplace=True)
         return df
@@ -80,27 +80,26 @@ class FraudDetector:
         z_scores = np.abs((X - mean_vals) / std_vals)
         df['zscore_outlier'] = np.where((z_scores > 3).any(axis=1), -1, 1)
 
-        # Ensemble Voting: If 2 or more models flag as -1 (anomaly), then fraud
+        # Ensemble Voting: If 2 or more models flag as -1 (anomaly), then outlier
         df['anomaly_votes'] = (df['iso_outlier'] == -1).astype(int) + \
                               (df['dbscan_outlier'] == -1).astype(int) + \
                               (df['zscore_outlier'] == -1).astype(int)
                               
         fraud_cases = df[df['anomaly_votes'] >= 2].copy()
         
-        logger.info(f"Detected {len(fraud_cases)} potential fraud cases.")
+        logger.info(f"Detected {len(fraud_cases)} potential outlier accounts.")
         
         if not fraud_cases.empty:
             # Prepare data for fraud_logs
             logs = []
             for _, row in fraud_cases.iterrows():
-                # Determine primary reason
-                fraud_type = "Complex Anomaly"
-                if row['refund_ratio'] > 0.5:
-                    fraud_type = "High Refund Abuse"
-                elif row['order_frequency'] > 10:
-                    fraud_type = "Velocity Fraud / Bot"
-                elif row['zscore_outlier'] == -1:
-                    fraud_type = "Statistical Outlier"
+                fraud_type = "Wholesale / Outlier"
+                if row['refund_ratio'] > 0.3:
+                    fraud_type = "High Return / Cancellation Rate"
+                elif row['order_frequency'] > 5:
+                    fraud_type = "High Frequency Account"
+                elif row['avg_order_amount'] > 2000:
+                    fraud_type = "High-Value Bulk Buyer"
 
                 # Normalize risk score 0-100 based on isolation forest score
                 raw_score = row['iso_score']
@@ -108,10 +107,10 @@ class FraudDetector:
                 
                 logs.append({
                     "customer_id": int(row['customer_id']),
-                    "order_id": None, # Aggregated at customer level for now
+                    "order_id": None,
                     "fraud_type": fraud_type,
                     "risk_score": risk,
-                    "detection_method": "Ensemble ML",
+                    "detection_method": "Ensemble ML (IsoForest+DBSCAN+ZScore)",
                     "is_confirmed": False
                 })
                 

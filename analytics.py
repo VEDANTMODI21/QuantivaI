@@ -22,15 +22,14 @@ TTL = 60  # seconds
 
 
 def _fraud():
-    o = fetch_data("SELECT order_id, customer_id, order_date, total_amount FROM orders")
-    r = fetch_data("SELECT o.customer_id, COUNT(*) AS refunds FROM refunds r "
-                   "JOIN orders o ON r.order_id = o.order_id GROUP BY o.customer_id")
+    o = fetch_data("SELECT order_id, customer_id, order_date, total_amount FROM orders WHERE status = 'Completed' AND customer_id != 99999")
+    r = fetch_data("SELECT customer_id, COUNT(*) AS refunds FROM orders WHERE status = 'Cancelled' AND customer_id != 99999 GROUP BY customer_id")
     o["day"] = pd.to_datetime(o["order_date"], errors="coerce").dt.date
     g = o.groupby("customer_id").agg(orders=("order_id", "count"), avg=("total_amount", "mean"),
                                      mx=("total_amount", "max"), sd=("total_amount", "std"),
                                      days=("day", "nunique")).fillna(0).reset_index()
     g = g.merge(r, how="left", on="customer_id").fillna(0)
-    g["refund_ratio"] = g["refunds"] / g["orders"]
+    g["refund_ratio"] = (g["refunds"] / (g["orders"] + g["refunds"])).clip(0, 1)
     g["freq"] = g["orders"] / g["days"].clip(lower=1)
     X = StandardScaler().fit_transform(g[["avg", "mx", "sd", "refund_ratio", "freq"]])
     iso = IsolationForest(contamination=0.02, random_state=42).fit(X)
@@ -39,12 +38,15 @@ def _fraud():
                   + (np.abs(X) > 3).any(axis=1).astype(int))
     g["score"] = -iso.decision_function(X)
     f = g[g["votes"] >= 2].sort_values("score", ascending=False)
-    top = f.head(8)[["customer_id", "avg", "refund_ratio", "votes"]].round(2)
+    top = f.head(8)[["customer_id", "avg", "refund_ratio", "votes"]].copy()
+    top["avg"] = top["avg"].round(2)
+    top["refund_ratio"] = top["refund_ratio"].round(3)
+    top["classification"] = "High-Value Outlier"
     return {"flagged": int(len(f)), "top": top.to_dict("records")}
 
 
 def _segments():
-    o = fetch_data("SELECT customer_id, order_date, total_amount FROM orders WHERE status = 'Completed'")
+    o = fetch_data("SELECT customer_id, order_date, total_amount FROM orders WHERE status = 'Completed' AND customer_id != 99999")
     o["d"] = pd.to_datetime(o["order_date"], errors="coerce")
     d_max = o["d"].max()
     snapshot = d_max + pd.Timedelta(days=1) if pd.notna(d_max) else pd.Timestamp.now()
@@ -68,8 +70,9 @@ def _segments():
 
 def _forecast(days=14):
     d = fetch_data("SELECT DATE(order_date) AS ds, SUM(total_amount) AS y, COUNT(*) AS n "
-                   "FROM orders WHERE status = 'Completed' GROUP BY DATE(order_date) ORDER BY ds")
-    d = d[d["n"] >= 20].tail(60)  # skip sparse simulator-only days
+                   "FROM orders WHERE status = 'Completed' AND order_date <= '2011-12-10' "
+                   "GROUP BY DATE(order_date) ORDER BY ds")
+    d = d[d["n"] >= 15].tail(60)
     hist = [round(float(v), 2) for v in d["y"]]
     try:
         from statsmodels.tsa.arima.model import ARIMA
@@ -83,13 +86,17 @@ def _forecast(days=14):
 def _recs(n_users=5):
     from scipy.sparse import csr_matrix
     d = fetch_data("SELECT o.customer_id, oi.product_id, SUM(oi.quantity) AS q FROM orders o "
-                   "JOIN order_items oi ON o.order_id = oi.order_id WHERE o.status = 'Completed' "
+                   "JOIN order_items oi ON o.order_id = oi.order_id "
+                   "JOIN products p ON oi.product_id = p.product_id "
+                   "WHERE o.status = 'Completed' AND o.customer_id != 99999 "
+                   "AND p.product_name NOT IN ('Manual', 'DOTCOM POSTAGE', 'POSTAGE', 'CARRIAGE', 'Discount', 'BANK CHARGES', 'CRUK Commission') "
+                   "AND UPPER(p.product_name) NOT LIKE '%POSTAGE%' "
+                   "AND UPPER(p.product_name) NOT LIKE '%MANUAL%' "
                    "GROUP BY o.customer_id, oi.product_id")
     if d.empty:
         return []
     names = fetch_data("SELECT product_id, product_name FROM products").set_index("product_id")["product_name"]
     
-    # Filter to top active products and users to keep memory small and fast
     top_pids = d.groupby("product_id")["q"].sum().nlargest(500).index
     d_sub = d[d["product_id"].isin(top_pids)].copy()
     
@@ -103,12 +110,10 @@ def _recs(n_users=5):
     data = d_sub["q"].values.astype(np.float32)
     
     mat = csr_matrix((data, (row_ind, col_ind)), shape=(len(cust_ids), len(prod_ids)))
-    # Compute similarity between top items
     item_mat = mat.T
     norms = np.sqrt(item_mat.power(2).sum(axis=1)).A1
     norms[norms == 0] = 1.0
     
-    # User recommendations for top active users
     user_counts = d_sub.groupby("customer_id")["q"].count()
     top_users = user_counts.nlargest(n_users).index
     
@@ -124,7 +129,7 @@ def _recs(n_users=5):
             
         sub_items = item_mat[bought_indices]
         scores = sub_items.dot(mat).toarray().sum(axis=0)
-        scores[bought_indices] = -1.0 # exclude already bought
+        scores[bought_indices] = -1.0
         
         top_rec_indices = np.argsort(scores)[-3:][::-1]
         rec_names = [str(names.get(prod_ids[i], f"Product {prod_ids[i]}")) for i in top_rec_indices if scores[i] > 0]

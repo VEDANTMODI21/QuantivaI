@@ -25,7 +25,11 @@ class RecommendationEngine:
                 SUM(oi.quantity) as purchase_count
             FROM orders o
             JOIN order_items oi ON o.order_id = oi.order_id
-            WHERE o.status = 'Completed'
+            JOIN products p ON oi.product_id = p.product_id
+            WHERE o.status = 'Completed' AND o.customer_id != 99999
+            AND p.product_name NOT IN ('Manual', 'DOTCOM POSTAGE', 'POSTAGE', 'CARRIAGE', 'Discount', 'BANK CHARGES')
+            AND UPPER(p.product_name) NOT LIKE '%POSTAGE%'
+            AND UPPER(p.product_name) NOT LIKE '%MANUAL%'
             GROUP BY o.customer_id, oi.product_id
         """
         df = fetch_data(query)
