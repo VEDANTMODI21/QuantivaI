@@ -126,10 +126,13 @@
         <div class="card-header">
           <h3 class="card-title">
             <svg style="width:20px;height:20px;fill:var(--accent-cyan)" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.53c-.26-.81-1-1.4-1.9-1.4h-1v-3c0-.55-.45-1-1-1h-6v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.4z"/></svg>
-            Regional Revenue Distribution (GBP £)
+            Top 6 Destination Countries (GBP £)
           </h3>
         </div>
         <div id="chart-regional-donut" style="min-height: 280px;"></div>
+        <div style="padding: 10px 14px; font-size: 0.75rem; color: var(--text-muted); border-top: 1px solid var(--border-color); background: rgba(0,0,0,0.12);">
+          Top 6 countries represent £20.05M of £20.97M total revenue; remaining £0.92M distributed across 35 other export countries.
+        </div>
       </div>
     </div>
   </div>
@@ -143,7 +146,7 @@
             <svg style="width:20px;height:20px;fill:var(--accent-rose)" viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-5.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>
             Machine Learning Outlier &amp; Fraud Engine (Isolation Forest + DBSCAN + Z-Score Ensemble)
           </h3>
-          <span class="badge badge-danger"><span id="fraud-badge-count">{{ fraud_cases }}</span> Flagged Profiles</span>
+          <span class="badge badge-danger"><span id="fraud-badge-count">{{ fraud_cases }}</span> Flagged Outliers</span>
         </div>
         <p style="color: var(--text-secondary); margin-top: 0;">
           Multi-model ensemble anomaly detection flags retail customer accounts exhibiting abnormal order velocities, high return/cancellation frequencies, or extreme order baskets.
@@ -239,7 +242,7 @@
         </div>
         <div class="stat-value">62.0% Acc</div>
         <div class="stat-subtext" style="color: var(--text-muted); font-size: 0.78rem; margin-top: 6px;">
-          <span style="color: var(--accent-emerald); font-weight: 600;">+11.9% lift</span> over 50.1% majority baseline<br>
+          <span style="color: var(--accent-emerald); font-weight: 600;">+11.2 percentage points</span> over 50.85% majority baseline<br>
           Precision: 0.61 · Recall: 0.66 · F1-Score: 0.63
         </div>
       </div>
@@ -249,8 +252,8 @@
         </div>
         <div class="stat-value">£300.70 MAE</div>
         <div class="stat-subtext" style="color: var(--text-muted); font-size: 0.78rem; margin-top: 6px;">
-          <span style="color: var(--accent-emerald); font-weight: 600;">9.7% relative error</span> on £3,018.62 mean CLTV<br>
-          Median Customer CLTV: £898.92
+          <span style="color: var(--accent-emerald); font-weight: 600;">9.7% of mean CLTV</span> (£3,018.62)<br>
+          33.4% of £898.92 median customer CLTV
         </div>
       </div>
     </div>
@@ -293,7 +296,7 @@
         </div>
         <div id="chart-forecast-full" style="min-height: 360px;"></div>
         <div style="padding: 12px 16px; font-size: 0.78rem; color: var(--text-muted); border-top: 1px solid var(--border-color); background: rgba(0,0,0,0.15);">
-          ℹ️ <strong>Retail Volatility Context:</strong> Nov–Dec sales surge ~2x to £56.5k/day mean (£200.9k max, £0 weekends). Feature-engineered autoregression (lag-1, lag-7, day-of-week) cuts MAE to £20.6k by capturing weekly retail operational rhythms that vanilla ARIMA cannot.
+          ℹ️ <strong>Retail Volatility Context:</strong> Nov–Dec sales surge ~2x to £56.5k/day mean (£200.9k max). The chart displays active trading days only (excluding Sunday warehouse closures); evaluation metrics are computed across all 30 calendar days (including 4 zero-sales closure days). Feature-engineered autoregression (lag-1, lag-7, day-of-week) cuts MAE to £20.6k by capturing weekly retail operational rhythms that vanilla ARIMA cannot.
         </div>
       </div>
     </div>
